@@ -189,4 +189,4 @@ your_sm %>% group_by(id_code, area) %>%
   ylab ("") +
   xlab ("Mean soil moisture") +
   theme_cowplot(12) +
-  theme (aspect.ratio = 1, legend.title = element_blank())
+  theme (aspect.ratio = 1, legend.title = element_blank()) 
