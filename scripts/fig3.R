@@ -172,7 +172,7 @@ your_sm %>% group_by(id_code, area) %>%
   filter(complete.cases(.)) %>% 
   mutate(across(everything(), ~rescale(.x))) %>% dist() %>% as.matrix() %>% as.data.frame()
 
-
+ 
 
 your_sm %>% group_by(id_code, area) %>% 
   summarise(sm_mean = mean(moist_mean, na.rm = T),
