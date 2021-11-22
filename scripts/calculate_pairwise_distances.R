@@ -6,26 +6,33 @@ library(mgcv)
 library(moments)
 library(patchwork)
 library(scales)
+library(sf)
 
-your_sm  <- read_csv ("data/analysis_data.csv")
+# bring logger soil moisture files
+your_sm  <- read_csv ("data/all_data_daily_2021.csv")
 
-#your_sm %>% mutate(area = ifelse(area %in% c("AIL", "MAL", "SAA"), "KIL", area)) -> your_sm
-#
-#your_sm$area <- recode_factor(your_sm$area,
-#                              RAS = "a",
-#                              KIL = "b",
-#                              VAR = "c",
-#                              TII = "d",
-#                              PIS = "e",
-#                              HYY = "f",
-#                              KAR = "g")
-#
-#your_sm %>% group_by(site, area) %>% 
-#  filter(moist_prop == 100 & probl < 2) %>% 
-#  summarise(sm_mean = mean(moist_mean, na.rm = T),
-#            sm_sd = sd(moist_mean, na.rm = T),
-#            T1_mean = mean(T1_mean, na.rm = T)) %>% 
-#  ungroup() -> d
+your_sm %>% mutate(area = ifelse(area %in% c("AIL", "MAL", "SAA"), "KIL", area)) -> your_sm
+
+your_sm$area <- recode_factor(your_sm$area,
+                              RAS = "a",
+                              KIL = "b",
+                              VAR = "c",
+                              TII = "d",
+                              PIS = "e",
+                              HYY = "f",
+                              KAR = "g")
+
+your_sm %>% 
+  filter(year(date) %in% c(2020)) %>%
+  filter(month(date) %in% c(7, 8)) -> your_sm
+
+your_sm %>% group_by(site) %>% 
+  summarise(moist_prop2 = mean(moist_prop)) -> aggr
+
+aggr %>% filter(moist_prop2 != 100 & moist_prop2 > 90)
+
+full_join(your_sm, aggr) %>% filter(moist_prop2 > 90) %>% 
+  select(-moist_prop2) -> your_sm
 
 your_sm %>% group_by(site, area) %>% 
   summarise(sm_mean = mean(moist_mean, na.rm = T),
@@ -35,7 +42,21 @@ your_sm %>% group_by(site, area) %>%
     ungroup() -> d
 
 # bring predictors
-predictors <- read_csv("data/analysis_data_env.csv") 
+predictors <- read_csv("data/all_env_variables.csv") %>% select(-area) %>% filter(logger == "Tomst")
+
+#rename id_code
+predictors <- rename(predictors, plot = site)
+predictors <- rename(predictors, site = id_code)
+
+# Get projected UTM coordinates
+predictors %>% select(site, x, y) %>% 
+  st_as_sf(coords = c("x","y"), crs = 4326) %>% 
+  st_transform(crs = 32635) %>% 
+  mutate(x_utm = st_coordinates(.)[,"X"],
+         y_utm = st_coordinates(.)[,"Y"]) %>% 
+  st_drop_geometry() %>% 
+  full_join(., predictors) -> predictors
+  
 
 full_join(d, predictors) -> d
 
@@ -50,6 +71,15 @@ d %>% column_to_rownames("site") %>%
 
 xy <- t(combn(colnames(dm), 2))
 dm1 <- data.frame(xy, moist=dm[xy])
+
+# Geographic distances
+d %>% column_to_rownames("site") %>% 
+  select(y_utm, x_utm) %>% 
+  filter(complete.cases(.)) %>% 
+  dist() %>% as.matrix() -> dm
+
+xy <- t(combn(colnames(dm), 2))
+dm_geo <- data.frame(xy, geo_dist=dm[xy])
 
 # swi
 d %>% column_to_rownames("site") %>% 
@@ -94,15 +124,17 @@ names(d)
 all <- full_join(dm1, dm2) %>% 
   full_join(., dm3) %>% 
   full_join(., dm4) %>% 
-  full_join(., dm5)
+  full_join(., dm5) %>% 
+  full_join(., dm_geo)
 
 names (all)
 
 cor(all$moist, all$canopy_portion_conif, use = "pairwise.complete.obs")
-cor(all[,3:7], use = "pairwise.complete.obs")
-
+cor(all[,3:7], use = "pairwise.complete.obs", method = "spearman")
+cor(all[,3:8] %>% mutate(geo_dist = sqrt(geo_dist)), use = "pairwise.complete.obs", method = "spearman")
 # lm
 lm.moist <- lm(moist ~ swi + allwet_prop_10m + fluvial_effect + canopy_portion_conif, data =all)
+lm.moist <- lm(moist ~ swi + allwet_prop_10m + fluvial_effect + canopy_portion_conif + sqrt(geo_dist), data =all)
 
 anova(lm.moist)
 summary(lm.moist)
