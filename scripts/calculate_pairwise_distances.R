@@ -42,9 +42,10 @@ your_sm %>% group_by(site, area) %>%
     ungroup() -> d
 
 d %>% mutate(area2 = substr(site, 1, 3)) -> d
-unique(d$area2)
+
 # bring predictors
-predictors <- read_csv("data/all_env_variables.csv") %>% select(-area) %>% filter(logger == "Tomst")
+predictors <- read_csv("data/all_env_variables.csv") %>% filter(area == "RAS")
+predictors <- read_csv("data/all_env_variables.csv") %>% select(-area) %>% filter(logger == "Tomst" | is.na(logger))
 predictors_climate <- read_csv("data/ERA5_means.csv") %>% 
   rename(area2 = area)
 
@@ -66,9 +67,8 @@ left_join(d, predictors) -> d
 left_join(d, predictors_climate) %>% 
   select(-area2) -> d
 
-summary (d)
-d %>% filter(is.na(sum_total_precipitation)) %>% pull(site)
-d %>% filter(is.na(x_utm)) %>% pull(site)
+summary(d)
+d %>% filter(is.na(x_utm)) # None, so good!
 
 # 2-D pairwise distances based on soil moisture mean & sd
 
@@ -81,6 +81,8 @@ xy <- t(combn(colnames(dm), 2))
 dm1 <- data.frame(xy, moist=dm[xy])
 
 # Geographic distances
+# UTM coordinates are missing for RASTIGAISA, thus we have to calculate them
+
 d %>% column_to_rownames("site") %>% 
   select(y_utm, x_utm) %>% 
   filter(complete.cases(.)) %>% 
