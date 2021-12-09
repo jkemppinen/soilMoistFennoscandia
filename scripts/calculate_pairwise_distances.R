@@ -14,17 +14,17 @@ your_sm  <- read_csv ("data/all_data_daily_2021.csv")
 your_sm %>% mutate(area = ifelse(area %in% c("AIL", "MAL", "SAA"), "KIL", area)) -> your_sm
 
 your_sm$area <- recode_factor(your_sm$area,
-                              RAS = "a",
-                              KIL = "b",
-                              VAR = "c",
-                              TII = "d",
-                              PIS = "e",
-                              HYY = "f",
-                              KAR = "g")
+                              RAS = "RAS",
+                              KIL = "KIL",
+                              VAR = "VÄR",
+                              TII = "TII",
+                              PIS = "PIS",
+                              HYY = "HYY",
+                              KAR = "KAR")
 
 your_sm %>% 
   filter(year(date) %in% c(2020)) %>%
-  filter(month(date) %in% c(7, 8)) -> your_sm
+  filter(month(date) %in% c(6, 7, 8, 9)) -> your_sm
 
 your_sm %>% group_by(site) %>% 
   summarise(moist_prop2 = mean(moist_prop)) -> aggr
@@ -41,8 +41,12 @@ your_sm %>% group_by(site, area) %>%
             sm_skew = skewness(moist_mean, na.rm = T)) %>% 
     ungroup() -> d
 
+d %>% mutate(area2 = substr(site, 1, 3)) -> d
+unique(d$area2)
 # bring predictors
 predictors <- read_csv("data/all_env_variables.csv") %>% select(-area) %>% filter(logger == "Tomst")
+predictors_climate <- read_csv("data/ERA5_means.csv") %>% 
+  rename(area2 = area)
 
 #rename id_code
 predictors <- rename(predictors, plot = site)
@@ -58,9 +62,13 @@ predictors %>% select(site, x, y) %>%
   full_join(., predictors) -> predictors
   
 
-full_join(d, predictors) -> d
+left_join(d, predictors) -> d
+left_join(d, predictors_climate) %>% 
+  select(-area2) -> d
 
 summary (d)
+d %>% filter(is.na(sum_total_precipitation)) %>% pull(site)
+d %>% filter(is.na(x_utm)) %>% pull(site)
 
 # 2-D pairwise distances based on soil moisture mean & sd
 
@@ -133,11 +141,13 @@ cor(all$moist, all$canopy_portion_conif, use = "pairwise.complete.obs")
 cor(all[,3:7], use = "pairwise.complete.obs", method = "spearman")
 cor(all[,3:8] %>% mutate(geo_dist = sqrt(geo_dist)), use = "pairwise.complete.obs", method = "spearman")
 # lm
-lm.moist <- lm(moist ~ swi + allwet_prop_10m + fluvial_effect + canopy_portion_conif, data =all)
-lm.moist <- lm(moist ~ swi + allwet_prop_10m + fluvial_effect + canopy_portion_conif + sqrt(geo_dist), data =all)
+lm.moist_base <- lm(moist ~ swi + allwet_prop_10m + fluvial_effect + canopy_portion_conif, data =all)
+lm.moist_full <- lm(moist ~ swi + allwet_prop_10m + fluvial_effect + canopy_portion_conif + sqrt(geo_dist), data =all)
 
 anova(lm.moist)
 summary(lm.moist)
+summary(lm.moist_base)
+summary(lm.moist_full)
 
 opar <- par(mfrow = c(2,2), oma = c(0, 0, 1.1, 0))
 plot(lm.moist, las = 1)      # Residuals, Fitted, ...
@@ -182,6 +192,17 @@ plot_canopy_portion_conif <- all %>%
   geom_smooth(method = gam, formula = y ~ s(x, k=4), se = T, colour="red") +
   
   ggtitle ("Distance in relation to canopy_portion_conif") +
+  ylab ("") +
+  xlab ("Distance in relation to mean and SD") +
+  theme_cowplot(12) +
+  theme (aspect.ratio = 1, legend.title = element_blank())
+
+plot_geo_dist <- all %>% 
+  ggplot(aes(x=moist, y=canopy_portion_conif)) +
+  geom_point(aes(size = 0.5), alpha=1/10) +
+  geom_smooth(method = gam, formula = y ~ s(x, k=4), se = T, colour="red") +
+  
+  ggtitle ("Distance in relation to geo_dist") +
   ylab ("") +
   xlab ("Distance in relation to mean and SD") +
   theme_cowplot(12) +
