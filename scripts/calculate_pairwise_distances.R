@@ -36,7 +36,7 @@ full_join(your_sm, aggr) %>% filter(moist_prop2 > 90) %>%
 
 your_sm %>% group_by(site, area) %>% 
   summarise(sm_mean = mean(moist_mean, na.rm = T),
-            sm_sd = log(sd(moist_mean, na.rm = T)),
+            sm_sd = sd(moist_mean, na.rm = T),
             sm_cv = sm_sd/sm_mean,
             sm_skew = skewness(moist_mean, na.rm = T)) %>% 
     ungroup() -> d
@@ -44,10 +44,14 @@ your_sm %>% group_by(site, area) %>%
 d %>% mutate(area2 = substr(site, 1, 3)) -> d
 
 # bring predictors
-predictors <- read_csv("data/all_env_variables.csv") %>% filter(area == "RAS")
 predictors <- read_csv("data/all_env_variables.csv") %>% select(-area) %>% filter(logger == "Tomst" | is.na(logger))
 predictors_climate <- read_csv("data/ERA5_means.csv") %>% 
   rename(area2 = area)
+
+# Rastigaisa is only Tundra, thus we impute missing canopy variables with zero
+predictors <- predictors %>% mutate(across(chm:pgaps5m_metsakeskus_20, ~ifelse(grepl("RAS", id_code), 0, .x)))
+predictors %>% filter(grepl("RAS", id_code))
+
 
 #rename id_code
 predictors <- rename(predictors, plot = site)
@@ -75,13 +79,29 @@ d %>% filter(is.na(x_utm)) # None, so good!
 d %>% column_to_rownames("site") %>% 
   select(sm_mean, sm_sd) %>% 
   filter(complete.cases(.)) %>% 
-  mutate(across(everything(), ~rescale(.x))) %>% dist() %>% as.matrix() -> dm
+  mutate(across(everything(), ~scale(.x))) %>% dist() %>% as.matrix() -> dm
 
 xy <- t(combn(colnames(dm), 2))
 dm1 <- data.frame(xy, moist=dm[xy])
 
+d %>% column_to_rownames("site") %>% 
+  select(sm_mean) %>% 
+  filter(complete.cases(.)) %>% 
+  dist() %>% as.matrix() -> dm
+
+xy <- t(combn(colnames(dm), 2))
+dm1 <- full_join(dm1, data.frame(xy, moist_mean=dm[xy]))
+
+d %>% column_to_rownames("site") %>% 
+  select(sm_sd) %>% 
+  filter(complete.cases(.)) %>% 
+  dist() %>% as.matrix() -> dm
+
+xy <- t(combn(colnames(dm), 2))
+dm1 <- full_join(dm1, data.frame(xy, moist_sd=dm[xy]))
+
+
 # Geographic distances
-# UTM coordinates are missing for RASTIGAISA, thus we have to calculate them
 
 d %>% column_to_rownames("site") %>% 
   select(y_utm, x_utm) %>% 
@@ -91,33 +111,68 @@ d %>% column_to_rownames("site") %>%
 xy <- t(combn(colnames(dm), 2))
 dm_geo <- data.frame(xy, geo_dist=dm[xy])
 
-# climatic distance (ERA5 prec and temp)
 d %>% column_to_rownames("site") %>% 
-  select(mean_2m_temperature, sum_total_precipitation) %>% 
+  select(y_utm) %>% 
   filter(complete.cases(.)) %>% 
   dist() %>% as.matrix() -> dm
 
 xy <- t(combn(colnames(dm), 2))
-dm_cli <- data.frame(xy, cli_dist=dm[xy])
+dm_geo <- full_join(dm_geo, data.frame(xy, lat_dist=dm[xy]))
 
-# topographical distance (swi, ele)
 d %>% column_to_rownames("site") %>% 
-  select(altitude, swi) %>% 
+  select(x_utm) %>% 
   filter(complete.cases(.)) %>% 
-  mutate(across(everything(), ~rescale(.x))) %>% dist() %>% as.matrix() -> dm
+  dist() %>% as.matrix() -> dm
 
 xy <- t(combn(colnames(dm), 2))
-dm_top <- data.frame(xy, top_dist=dm[xy])
+dm_geo <- full_join(dm_geo, data.frame(xy, lon_dist=dm[xy]))
 
-## swi
-#d %>% column_to_rownames("site") %>% 
-#  select(swi) %>% 
-#  filter(complete.cases(.)) %>% 
-#  mutate(across(everything(), ~rescale(.x))) %>% dist() %>% as.matrix() -> dm
-#
-#xy <- t(combn(colnames(dm), 2))
-#topo <- data.frame(xy, swi=dm[xy])
-#
+# Climate distances
+
+d %>% column_to_rownames("site") %>% 
+  select(mean_2m_temperature, sum_total_precipitation) %>% 
+  filter(complete.cases(.)) %>% 
+  mutate(across(everything(), ~scale(.x))) %>% dist() %>% as.matrix() -> dm
+
+xy <- t(combn(colnames(dm), 2))
+dm_clim <- data.frame(xy, clim_dist=dm[xy])
+
+d %>% column_to_rownames("site") %>% 
+  select(mean_2m_temperature) %>% 
+  filter(complete.cases(.)) %>% 
+  dist() %>% as.matrix() -> dm
+
+xy <- t(combn(colnames(dm), 2))
+dm_clim <- full_join(dm_clim, data.frame(xy, temp_dist=dm[xy]))
+
+d %>% column_to_rownames("site") %>% 
+  select(sum_total_precipitation) %>% 
+  filter(complete.cases(.)) %>% 
+  dist() %>% as.matrix() -> dm
+
+xy <- t(combn(colnames(dm), 2))
+dm_clim <- full_join(dm_clim, data.frame(xy, prec_dist=dm[xy]))
+
+
+# swi
+d %>% column_to_rownames("site") %>% 
+  select(swi) %>% 
+  filter(complete.cases(.)) %>% 
+  mutate(across(everything(), ~scale(.x))) %>% dist() %>% as.matrix() -> dm
+
+xy <- t(combn(colnames(dm), 2))
+dm2 <- data.frame(xy, swi=dm[xy])
+
+
+# Vegetation distance
+d %>% column_to_rownames("site") %>% 
+  select(canopy_cover2m_5m, chm) %>% 
+  filter(complete.cases(.)) %>% 
+  mutate(across(everything(), ~scale(.x))) %>% dist() %>% as.matrix() -> dm
+
+xy <- t(combn(colnames(dm), 2))
+dm3 <- data.frame(xy, canopy=dm[xy])
+
 ## allwet_prop_10m
 #d %>% column_to_rownames("site") %>% 
 #  select(allwet_prop_10m) %>% 
@@ -135,95 +190,84 @@ dm_top <- data.frame(xy, top_dist=dm[xy])
 #
 #xy <- t(combn(colnames(dm), 2))
 #dm4 <- data.frame(xy, fluvial_effect=dm[xy])
-#
-## canopy_portion_conif
-#d %>% column_to_rownames("site") %>% 
-#  select(canopy_portion_conif) %>% 
-#  filter(complete.cases(.)) %>% 
-#  mutate(across(everything(), ~rescale(.x))) %>% dist() %>% as.matrix() -> dm
-#
-#xy <- t(combn(colnames(dm), 2))
-#dm5 <- data.frame(xy, canopy_portion_conif=dm[xy])
 
-names(d)
 
 # Combine the pairwise distance dataframes
 
-all <- full_join(dm1, dm_top) %>% 
-  full_join(., dm_cli) %>% 
-  full_join(., dm_geo)
+all <- full_join(dm1, dm2) %>% 
+  full_join(., dm3) %>% 
+  full_join(., dm_geo) %>% 
+  full_join(., dm_clim) %>% 
+  mutate(geo_dist_log = log(geo_dist+1),
+         lat_dist_log = log(lat_dist+1),
+         lot_dist_log = log(lon_dist+1))
 
 names (all)
 
-cor(all$moist, all$top_dist, use = "pairwise.complete.obs")
-cor(all[,3:5], use = "pairwise.complete.obs", method = "spearman")
-cor(all[,3:6] %>% mutate(geo_dist = sqrt(geo_dist)), use = "pairwise.complete.obs", method = "spearman")
+# Correlation between all variables
+cor(all %>% select(moist:lot_dist_log), use = "pairwise.complete.obs", method = "spearman") %>% round(3)
+# cor(all %>% select(moist:lot_dist_log), use = "pairwise.complete.obs", method = "pearson") %>% round(3)
+
+# For focus variables only
+cor(all %>% select(moist,swi,canopy,geo_dist,clim_dist), use = "pairwise.complete.obs", method = "spearman") %>% round(3)
+# Latitude, Longitude, Temperature and Precipitation as separate variables
+cor(all %>% select(moist,lat_dist,lon_dist,temp_dist,prec_dist), use = "pairwise.complete.obs", method = "spearman") %>% round(3)
 
 # lm
-lm.moist_full <- lm(moist ~ swi +
-                      sqrt(cli_dist) +
-                      sqrt(geo_dist), data =all)
+# Scale variables to enable parameter comparison
+all_scaled <- all %>% 
+  as.data.frame() %>% mutate(across(moist:lot_dist_log, ~scale(.x)))
 
-anova(lm.moist)
-summary(lm.moist)
+
+hist(sqrt(all$moist))
+
+lm.moist_base <- lm(moist ~ swi + canopy + geo_dist + clim_dist, data =all_scaled)
 summary(lm.moist_base)
-summary(lm.moist_full)
+# With log-transformed geographic distance
+lm.moist_log <- lm(moist ~ swi + canopy + geo_dist_log + clim_dist, data =all_scaled)
+summary(lm.moist_log)
+# Nothing especially interesting here, maybe we use only the pairwise correlations?
 
-opar <- par(mfrow = c(2,2), oma = c(0, 0, 1.1, 0))
-plot(lm.moist, las = 1)      # Residuals, Fitted, ...
-par(opar)
-
-plot_swi <- all %>% 
-  ggplot(aes(x=moist, y=top_dist)) +
-  geom_point(aes(size = 0.5), alpha=1/10) +
-  geom_smooth(method = gam, formula = y ~ s(x, k=3), se = T, colour="red") +
-  
-  ggtitle ("SWI distance") +
-  ylab ("") +
-  xlab ("Mean-SD soil moisture distance") +
-  theme_cowplot(12) +
-  theme (aspect.ratio = 1, legend.title = element_blank())
-
-plot_cli_dist <- all %>% 
-  ggplot(aes(x=moist, y=cli_dist)) +
-  geom_point(aes(size = 0.5), alpha=1/10) +
-  geom_smooth(method = gam, formula = y ~ s(x, k=3), se = T, colour="red") +
-  
-  ggtitle ("Climatic distance") +
-  ylab ("") +
-  xlab ("Mean-SD soil moisture distance") +
+# Scatter plots
+plot_swi <- all %>%
+  ggplot(aes(x=swi, y=moist)) +
+  geom_point(size = 1, alpha=1/100) +
+  scale_fill_continuous(type = "viridis") +
+  geom_smooth(method = lm, se = T, colour="red") +
+  ylab ("Moisture space distance") +
+  xlab ("Topograhic distance") +
   theme_cowplot(12) +
   theme (aspect.ratio = 1, legend.title = element_blank())
 
 plot_geo_dist <- all %>% 
-  ggplot(aes(x=moist, y=geo_dist)) +
-  geom_point(aes(size = 0.5), alpha=1/10) +
-  geom_smooth(method = gam, formula = y ~ s(x, k=3), se = T, colour="red") +
-  
-  ggtitle ("Geographical distance") +
-  ylab ("") +
-  xlab ("Mean-SD soil moisture distance") +
+  ggplot(aes(x=geo_dist, y=moist)) +
+  geom_point(size = 1, alpha=1/100) +
+  scale_fill_continuous(type = "viridis") +
+  geom_smooth(method = lm, se = T, colour="red") +
+  ylab ("Moisture space distance") +
+  xlab ("Geographic distance") +
   theme_cowplot(12) +
   theme (aspect.ratio = 1, legend.title = element_blank())
 
-plot_swi + plot_cli_dist + plot_geo_dist + plot_layout(guides = "collect")
+plot_clim_dist <- all %>% 
+  ggplot(aes(x=clim_dist, y=moist)) +
+  geom_point(size = 1, alpha=1/100) +
+  scale_fill_continuous(type = "viridis") +
+  geom_smooth(method = lm, se = T, colour="red") +
+  ylab ("Moisture space distance") +
+  xlab ("Climate distance") +
+  theme_cowplot(12) +
+  theme (aspect.ratio = 1, legend.title = element_blank())
 
-gam_moist <- gam(moist~
-                   s(top_dist, k = 3)+
-                   s(cli_dist, k = 3)+
-                   s(geo_dist, k = 3), data=all)
-summary(gam_moist)
+plot_veg_dist <- all %>% 
+  ggplot(aes(x=canopy, y=moist)) +
+  geom_point(size = 1, alpha=1/100) +
+  scale_fill_continuous(type = "viridis") +
+  geom_smooth(method = lm, se = T, colour="red") +
+  ylab ("Moisture space distance") +
+  xlab ("Vegetation distance") +
+  theme_cowplot(12) +
+  theme (aspect.ratio = 1, legend.title = element_blank())
 
-names (d)
 
-d %>% 
-  ggplot(aes(x=sm_mean, y=sm_sd)) +
-  geom_point(aes(size = 0.5), alpha=1/10)
-
-d %>% 
-  ggplot(aes(x=x_utm, y=y_utm)) +
-  geom_point(aes(size = 0.5), alpha=1/10)
-
-d %>% 
-  ggplot(aes(x=sum_total_precipitation, y=mean_2m_temperature)) +
-  geom_point(aes(size = 0.5), alpha=1/10)
+(plot_swi | plot_geo_dist) / (plot_clim_dist | plot_veg_dist) + plot_layout(guides = "collect")
