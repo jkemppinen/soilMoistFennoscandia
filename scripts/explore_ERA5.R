@@ -11,7 +11,7 @@ d <- bind_rows(read_csv("data/ERA_raw_values.csv"),
 
 unique(d$var)
 
-d %>% filter(date >= "2020-06-01") %>% 
+d %>% filter(date >= "2020-04-01") %>% 
   filter(date < "2020-10-01") %>% 
   pivot_longer(cols = starts_with("X"), names_to = "hour") %>% 
   mutate(hour = parse_number(hour)) %>% 
@@ -25,7 +25,7 @@ d %>% filter(date >= "2020-06-01") %>%
   mutate(mean_2m_temperature = mean_2m_temperature-272.15, 
          sum_total_precipitation = sum_total_precipitation*1000) -> area_means
 
-write_csv(area_means, "ERA5_means.csv")
+write_csv(area_means, "data/ERA5_means.csv")
 
 # Downscaled
 
