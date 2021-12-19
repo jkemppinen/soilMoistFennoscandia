@@ -9,7 +9,8 @@ library(scales)
 library(sf)
 
 # bring logger soil moisture files
-your_sm  <- read_csv ("data/all_data_daily_2021.csv")
+your_sm  <- read_csv ("data/all_data_daily_2021.csv") %>% 
+  filter(!grepl("PIS1", site)) # Exclude PISA sites in active forestry areas
 
 your_sm %>% mutate(area = ifelse(area %in% c("AIL", "MAL", "SAA"), "KIL", area)) -> your_sm
 
@@ -24,16 +25,32 @@ your_sm$area <- recode_factor(your_sm$area,
 
 your_sm %>% 
   filter(year(date) %in% c(2020)) %>%
-  filter(month(date) %in% c(6, 7, 8, 9)) -> your_sm
+  filter(month(date) %in% c(4:9)) -> your_sm # Select which months to include
 
+# Keep data only after snow melt
+your_sm %>% 
+  filter(T1_mean > 1) %>% 
+  group_by(site) %>% 
+  summarise(first_date = min(date)) -> aggr1
+
+full_join(your_sm, aggr1) %>% 
+  filter(date >= first_date) %>% 
+  select(-first_date) -> your_sm
+
+# Based on the snow free season, keep only sites which have >= 90% of the period covered
 your_sm %>% group_by(site) %>% 
-  summarise(moist_prop2 = mean(moist_prop)) -> aggr
+  summarise(moist_prop2 = mean(moist_prop)) -> aggr2
 
-aggr %>% filter(moist_prop2 != 100 & moist_prop2 > 90)
-
-full_join(your_sm, aggr) %>% filter(moist_prop2 > 90) %>% 
+full_join(your_sm, aggr2) %>% filter(moist_prop2 >= 90) %>% 
+  filter(moist_prop >= 90) %>% 
   select(-moist_prop2) -> your_sm
 
+
+length(unique(your_sm$site)) # 503 sites selected
+your_sm %>% filter(!is.na(moist_mean)) %>% nrow()*24*4 # The total number of obsevations
+
+
+# Calculate moisture variables
 your_sm %>% group_by(site, area) %>% 
   summarise(sm_mean = mean(moist_mean, na.rm = T),
             sm_sd = sd(moist_mean, na.rm = T),
@@ -42,6 +59,18 @@ your_sm %>% group_by(site, area) %>%
     ungroup() -> d
 
 d %>% mutate(area2 = substr(site, 1, 3)) -> d
+
+# How many sites per area included after filtering
+table(d$area)
+
+# THIS PLOT CAN BE REMOVED HERE!!!!!!!!!!!!!!!!!!!1
+d %>% 
+  ggplot(aes(y = sm_sd, x = sm_mean, color = area))+
+  geom_point()+
+  geom_smooth(method = gam, formula = y ~ s(x, k = 3), se = F)
+
+# Moisture data preprocessing done!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 
 # bring predictors
 predictors <- read_csv("data/all_env_variables.csv") %>% select(-area) %>% filter(logger == "Tomst" | is.na(logger))
