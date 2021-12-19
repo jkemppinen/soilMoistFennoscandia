@@ -23,9 +23,10 @@ your_sm$area <- recode_factor(your_sm$area,
                               HYY = "HYY",
                               KAR = "KAR")
 
+# Select which year and months to include
 your_sm %>% 
   filter(year(date) %in% c(2020)) %>%
-  filter(month(date) %in% c(4:9)) -> your_sm # Select which months to include
+  filter(month(date) %in% c(4:9)) -> your_sm 
 
 # Keep data only after snow melt
 your_sm %>% 
@@ -45,32 +46,22 @@ full_join(your_sm, aggr2) %>% filter(moist_prop2 >= 90) %>%
   filter(moist_prop >= 90) %>% 
   select(-moist_prop2) -> your_sm
 
-
+# How many sites in total?
 length(unique(your_sm$site)) # 503 sites selected
-your_sm %>% filter(!is.na(moist_mean)) %>% nrow()*24*4 # The total number of obsevations
 
+# How many measurements in total?
+your_sm %>% filter(!is.na(moist_mean)) %>% nrow()*24*4 # The total number of obsevations
 
 # Calculate moisture variables
 your_sm %>% group_by(site, area) %>% 
   summarise(sm_mean = mean(moist_mean, na.rm = T),
-            sm_sd = sd(moist_mean, na.rm = T),
-            sm_cv = sm_sd/sm_mean,
-            sm_skew = skewness(moist_mean, na.rm = T)) %>% 
-    ungroup() -> d
+            sm_sd = sd(moist_mean, na.rm = T)) %>% 
+  ungroup() -> d
 
 d %>% mutate(area2 = substr(site, 1, 3)) -> d
 
-# How many sites per area included after filtering
+# How many sites per area included after filtering?
 table(d$area)
-
-# THIS PLOT CAN BE REMOVED HERE!!!!!!!!!!!!!!!!!!!1
-d %>% 
-  ggplot(aes(y = sm_sd, x = sm_mean, color = area))+
-  geom_point()+
-  geom_smooth(method = gam, formula = y ~ s(x, k = 3), se = F)
-
-# Moisture data preprocessing done!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 
 # bring predictors
 predictors <- read_csv("data/all_env_variables.csv") %>% select(-area) %>% filter(logger == "Tomst" | is.na(logger))
