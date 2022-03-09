@@ -62,28 +62,330 @@ your_sm %>% group_by(site, area) %>%
   summarise(sm_mean = mean(sm_mean, na.rm = T),
             sm_sd = mean(sm_sd, na.rm = T)) -> your_sm_means
 
+# These are used to filter monthly datasets
+your_sm %>% 
+  mutate(month = month(date)) %>% 
+  group_by(area, site, month) %>% count() %>% filter(n > 10) -> site_aggr
+
+site_aggr %>% 
+  group_by(area, month) %>% count() %>% filter(n > 20) -> area_aggr
+
 #subset
 your_sm %>% 
-  filter(month(date) %in% c(4)) -> your_sm_04
+  mutate(month = month(date)) %>% 
+  filter(month %in% c(4)) %>% 
+  left_join(., area_aggr) %>% 
+  filter(!is.na(n)) %>% select(-n) %>% 
+  left_join(., site_aggr) %>% 
+  filter(!is.na(n)) %>% select(-n) -> your_sm_04
 
 your_sm %>% 
-  filter(month(date) %in% c(5)) -> your_sm_05
+  mutate(month = month(date)) %>% 
+  filter(month %in% c(5)) %>% 
+  left_join(., area_aggr) %>% 
+  filter(!is.na(n)) %>% select(-n) %>% 
+  left_join(., site_aggr) %>% 
+  filter(!is.na(n)) %>% select(-n) -> your_sm_05
 
 your_sm %>% 
-  filter(month(date) %in% c(6)) -> your_sm_06
+  mutate(month = month(date)) %>% 
+  filter(month %in% c(6)) %>% 
+  left_join(., area_aggr) %>% 
+  filter(!is.na(n)) %>% select(-n) %>% 
+  left_join(., site_aggr) %>% 
+  filter(!is.na(n)) %>% select(-n) -> your_sm_06
 
 your_sm %>% 
-  filter(month(date) %in% c(7)) -> your_sm_07
+  mutate(month = month(date)) %>% 
+  filter(month %in% c(7)) %>% 
+  left_join(., area_aggr) %>% 
+  filter(!is.na(n)) %>% select(-n) %>% 
+  left_join(., site_aggr) %>% 
+  filter(!is.na(n)) %>% select(-n) -> your_sm_07
 
 your_sm %>% 
-  filter(month(date) %in% c(8)) -> your_sm_08
+  mutate(month = month(date)) %>% 
+  filter(month %in% c(8)) %>% 
+  left_join(., area_aggr) %>% 
+  filter(!is.na(n)) %>% select(-n) %>% 
+  left_join(., site_aggr) %>% 
+  filter(!is.na(n)) %>% select(-n) -> your_sm_08
 
 your_sm %>% 
-  filter(month(date) %in% c(9)) -> your_sm_09
+  mutate(month = month(date)) %>% 
+  filter(month %in% c(9)) %>% 
+  left_join(., area_aggr) %>% 
+  filter(!is.na(n)) %>% select(-n) %>% 
+  left_join(., site_aggr) %>% 
+  filter(!is.na(n)) %>% select(-n) -> your_sm_09
 
 # colors
 gnuplot (10)
 your_palette <- colorRampPalette(c("#000099", "#0000FF", "#5000FF", "#9F0FF0", "#EF42BD", "#FF758A", "#FFA857", "#FFDB24"))
+
+
+###########################################################
+# LM POLY MODELS
+
+# plot
+fig_sd = your_sm %>% group_by(site, area) %>% 
+  summarise(sm_mean = mean(moist_mean, na.rm = T),
+            sm_sd = sd(moist_mean, na.rm = T)) %>% 
+  ggplot(aes(x=sm_mean, y=sm_sd, colour=area, fill=area)) +
+  geom_point(size=0.5, alpha=5/10) +
+  geom_smooth(method = lm, formula = y ~ poly(x, 2), se = F, size=0.5) +
+  scale_fill_manual(values = rev(your_palette(7))) +
+  scale_color_manual(values = rev(your_palette(7))) +
+  ylab ("Standard deviation of VWC%") +
+  xlab ("Mean VWC%") +
+  theme_classic() +
+  theme(
+    aspect.ratio = 1,
+    legend.position = "None")
+
+fig_sd2 = your_sm %>% group_by(site, area) %>% 
+  summarise(sm_mean = mean(moist_mean, na.rm = T),
+            sm_sd = sd(moist_mean, na.rm = T)) %>% 
+  ggplot(aes(x=sm_mean, y=sm_sd, colour=area, fill=area)) +
+  geom_point(size=0.5, alpha=5/10) +
+  geom_smooth(method = lm, formula = y ~ poly(x, 2), se = F, size=0.5) +
+  geom_smooth(method = lm, formula = y ~ poly(x, 2), se = F, colour="black", fill="black", size=0.5, linetype = "dashed") +
+  geom_point(data = your_sm_means, size = 4, pch=18) +
+  scale_fill_manual(values = rev(your_palette(7))) +
+  scale_color_manual(values = rev(your_palette(7))) +
+  ylab ("Standard deviation of VWC%") +
+  xlab ("Mean VWC%") +
+  theme_classic() +
+  theme(
+    aspect.ratio = 1,
+    legend.position = "None")
+
+layout <- '
+AAAAA#
+AAAAAB
+AAAAA#
+'
+
+dev.off()
+pdf(file="fig/fig_variation.pdf", width = 7.48, height = 5)
+
+wrap_plots(A = fig_sd2,
+           B = p_names,
+           design = layout) & 
+  theme(plot.tag = element_text(size = 8))
+
+dev.off()
+
+# APPENDIX
+
+fig_sd_04 = your_sm_04 %>%
+  group_by(site, area) %>% 
+  summarise(sm_mean = mean(moist_mean, na.rm = T),
+            sm_sd = sd(moist_mean, na.rm = T)) %>% 
+  ggplot(aes(x=sm_mean, y=sm_sd, colour=area, fill=area)) +
+  #  geom_point(size=1, alpha=5/10) +
+  geom_smooth(method = lm, formula = y ~ poly(x, 2), se = F, size=0.5) +
+  scale_fill_manual(values = rev(your_palette(7))) +
+  scale_color_manual(values = rev(your_palette(7))) +
+  ggtitle("April") +
+  ylab ("Standard deviation of VWC%") +
+  xlab ("") +
+  # ylim (0,8) + 
+  theme_classic() +
+  theme(
+    aspect.ratio = 1,
+    legend.position = "None") +
+  facet_wrap(vars(area), ncol= 1) +
+  theme(
+    strip.background = element_blank(),
+    strip.text.x = element_blank())
+
+fig_sd_05 = your_sm_05 %>%
+  group_by(site, area) %>% 
+  summarise(sm_mean = mean(moist_mean, na.rm = T),
+            sm_sd = sd(moist_mean, na.rm = T)) %>% 
+  ggplot(aes(x=sm_mean, y=sm_sd, colour=area, fill=area)) +
+  #  geom_point(size=1, alpha=5/10) +
+  geom_smooth(method = lm, formula = y ~ poly(x, 2), se = F, size=0.5) +
+  scale_fill_manual(values = rev(your_palette(7))) +
+  scale_color_manual(values = rev(your_palette(7))) +
+  ggtitle("May") +
+  ylab ("") +
+  xlab ("") +
+  # ylim (0,8) + 
+  theme_classic() +
+  theme(
+    aspect.ratio = 1,
+    legend.position = "None") +
+  facet_wrap(vars(area), ncol= 1) +
+  theme(
+    strip.background = element_blank(),
+    strip.text.x = element_blank())
+
+fig_sd_06 = your_sm_06 %>%
+  group_by(site, area) %>% 
+  summarise(sm_mean = mean(moist_mean, na.rm = T),
+            sm_sd = sd(moist_mean, na.rm = T)) %>% 
+  ggplot(aes(x=sm_mean, y=sm_sd, colour=area, fill=area)) +
+  #  geom_point(size=1, alpha=5/10) +
+  geom_smooth(method = lm, formula = y ~ poly(x, 2), se = F, size=0.5) +
+  scale_fill_manual(values = rev(your_palette(7))) +
+  scale_color_manual(values = rev(your_palette(7))) +
+  ggtitle("June") +
+  ylab ("") +
+  xlab ("") +
+  # ylim (0,8) + 
+  theme_classic() +
+  theme(
+    aspect.ratio = 1,
+    legend.position = "None") +
+  facet_wrap(vars(area), ncol= 1) +
+  theme(
+    strip.background = element_blank(),
+    strip.text.x = element_blank())
+
+fig_sd_07 = your_sm_07 %>%
+  group_by(site, area) %>% 
+  summarise(sm_mean = mean(moist_mean, na.rm = T),
+            sm_sd = sd(moist_mean, na.rm = T)) %>% 
+  ggplot(aes(x=sm_mean, y=sm_sd, colour=area, fill=area)) +
+  #  geom_point(size=1, alpha=5/10) +
+  geom_smooth(method = lm, formula = y ~ poly(x, 2), se = F, size=0.5) +
+  scale_fill_manual(values = rev(your_palette(7))) +
+  scale_color_manual(values = rev(your_palette(7))) +
+  ggtitle("July") + 
+  ylab ("") +
+  xlab ("Mean VWC%") +
+  # ylim (0,8) + 
+  theme_classic() +
+  theme(
+    aspect.ratio = 1,
+    legend.position = "None") +
+  facet_wrap(vars(area), ncol= 1) +
+  theme(
+    strip.background = element_blank(),
+    strip.text.x = element_blank())
+
+fig_sd_08 = your_sm_08 %>%
+  group_by(site, area) %>% 
+  summarise(sm_mean = mean(moist_mean, na.rm = T),
+            sm_sd = sd(moist_mean, na.rm = T)) %>% 
+  ggplot(aes(x=sm_mean, y=sm_sd, colour=area, fill=area)) +
+  #  geom_point(size=1, alpha=5/10) +
+  geom_smooth(method = lm, formula = y ~ poly(x, 2), se = F, size=0.5) +
+  scale_fill_manual(values = rev(your_palette(7))) +
+  scale_color_manual(values = rev(your_palette(7))) +
+  ggtitle("August") +
+  ylab ("") +
+  xlab ("") +
+  # ylim (0,8) + 
+  theme_classic() +
+  theme(
+    aspect.ratio = 1,
+    legend.position = "None") +
+  facet_wrap(vars(area), ncol= 1) +
+  theme(
+    strip.background = element_blank(),
+    strip.text.x = element_blank())
+
+fig_sd_09 = your_sm_09 %>%
+  group_by(site, area) %>% 
+  summarise(sm_mean = mean(moist_mean, na.rm = T),
+            sm_sd = sd(moist_mean, na.rm = T)) %>% 
+  ggplot(aes(x=sm_mean, y=sm_sd, colour=area, fill=area)) +
+  #  geom_point(size=1, alpha=5/10) +
+  geom_smooth(method = lm, formula = y ~ poly(x, 2), se = F, size=0.5) +
+  scale_fill_manual(values = rev(your_palette(7))) +
+  scale_color_manual(values = rev(your_palette(7))) +
+  ggtitle("September") + 
+  ylab ("") +
+  xlab ("") +
+  # ylim (0,8) +
+  theme_classic() +
+  theme(
+    aspect.ratio = 1,
+    legend.position = "None") +
+  facet_wrap(vars(area), ncol= 1) +
+  theme(
+    strip.background = element_blank(),
+    strip.text.x = element_blank())
+
+fig_sd = your_sm %>% group_by(site, area) %>% 
+  summarise(sm_mean = mean(moist_mean, na.rm = T),
+            sm_sd = sd(moist_mean, na.rm = T)) %>% 
+  ggplot(aes(x=sm_mean, y=sm_sd, colour=area, fill=area)) +
+  #  geom_point(size=1, alpha=5/10) +
+  geom_smooth(method = lm, formula = y ~ poly(x, 2), se = F, size=0.5) +
+  scale_fill_manual(values = rev(your_palette(7))) +
+  scale_color_manual(values = rev(your_palette(7))) +
+  ggtitle("All months") +
+  ylab ("") +
+  xlab ("") +
+  # ylim (0,8) + 
+  theme_classic() +
+  theme(
+    aspect.ratio = 1,
+    legend.position = "None") +
+  facet_wrap(vars(area), ncol= 1) +
+  theme(
+    strip.background = element_blank(),
+    strip.text.x = element_blank())
+
+# plot area names only
+your_palette(7)
+
+p_names = ggplot() +
+  annotate("text", x = 1, y =1.7, size = 3.5, fontface =2,
+           label = "Rásttigáisá",
+           colour="#FFDB24") +
+  annotate("text", x = 1, y =1.6, size = 3.5, fontface =2,
+           label = "Kilpisjärvi",
+           colour="#FF9F5F") +
+  annotate("text", x = 1, y =1.5, size = 3.5, fontface =2,
+           label = "Värriö",
+           colour="#F9649B") +
+  annotate("text", x = 1, y =1.4, size = 3.5, fontface =2,
+           label = "Tiilikka",
+           colour="#C728D6") +
+  annotate("text", x = 1, y =1.3, size = 3.5, fontface =2,
+           label = "Pisa",
+           colour="#6A05FA") +
+  annotate("text", x = 1, y =1.2, size = 3.5, fontface =2,
+           label = "Hyytiälä",
+           colour="#0D00FF") +
+  annotate("text", x = 1, y =1.1, size = 3.5, fontface =2,
+           label = "Karkali",
+           colour="#000099") +
+  theme_void()
+
+layout <- '
+ABCDEGH
+ABCDEGH
+ABCDEGH
+ABCDEGH
+##III##
+'
+
+dev.off()
+pdf(file="fig/fig_variation2.pdf", width = 7.48, height = 7.48)
+
+wrap_plots(A = fig_sd_04,
+           B = fig_sd_05,
+           C = fig_sd_06,
+           D = fig_sd_07,
+           E = fig_sd_08,
+           G = fig_sd_09,
+           H = fig_sd,
+           I = p_names, design = layout) +
+  plot_annotation(tag_levels = 'A') & 
+  theme(plot.tag = element_text(size = 8))
+
+dev.off()
+
+
+
+###########################################################
+# GAM MODELS
 
 # plot
 fig_sd = your_sm %>% group_by(site, area) %>% 
