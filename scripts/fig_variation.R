@@ -49,10 +49,10 @@ full_join(your_sm, aggr2) %>% filter(moist_prop2 >= 90) %>%
 length(unique(your_sm$site)) # 503 sites selected
 
 # How many measurements in total?
-your_sm %>% filter(!is.na(moist_mean)) %>% nrow()*24*4 # The total number of obsevations
+your_sm %>% filter(!is.na(moist_mean)) %>% nrow()*24*4 # The total number of observations
 
 # How many sites per area included after filtering?
-table(d$area)
+length(unique(your_sm$site))
 
 # Calculate mean for each area
 your_sm %>% group_by(site, area) %>% 
@@ -101,36 +101,35 @@ fig_sd = your_sm %>% group_by(site, area) %>%
     aspect.ratio = 1,
     legend.position = "None")
 
-fig_sd_all = your_sm %>% group_by(site, area) %>% 
+fig_sd2 = your_sm %>% group_by(site, area) %>% 
   summarise(sm_mean = mean(moist_mean, na.rm = T),
-            sm_sd = (sd(moist_mean, na.rm = T))) %>% 
-  ggplot(aes(x=sm_mean, y=sm_sd)) +
-  geom_point(aes(colour=area, fill=area), size = 0.5, alpha=5/10) +
-  geom_smooth(method = gam, formula = y ~ s(x, k=3), se = F, colour="black", fill="black", size=0.5) +
-  geom_point(data = your_sm_means, aes(colour=area), size = 4, pch=18) +
+            sm_sd = sd(moist_mean, na.rm = T)) %>% 
+  ggplot(aes(x=sm_mean, y=sm_sd, colour=area, fill=area)) +
+  geom_point(size=0.5, alpha=5/10) +
+  geom_smooth(method = gam, formula = y ~ s(x, k=3), se = F, size=0.5) +
+  geom_smooth(method = gam, formula = y ~ s(x, k=3), se = F, colour="black", fill="black", size=0.5, linetype = "dashed") +
+  geom_point(data = your_sm_means, size = 4, pch=18) +
   scale_fill_manual(values = rev(your_palette(7))) +
   scale_color_manual(values = rev(your_palette(7))) +
-  ylab ("") +
+  ylab ("Standard deviation of VWC%") +
   xlab ("Mean VWC%") +
   theme_classic() +
   theme(
     aspect.ratio = 1,
-    legend.position = "None",
-    axis.text.y = element_blank())
+    legend.position = "None")
 
 layout <- '
-AABB
-AABB
-#CC#
+AAAAA#
+AAAAAB
+AAAAA#
 '
 
 dev.off()
 pdf(file="fig/fig_variation.pdf", width = 7.48, height = 5)
 
-wrap_plots(A = fig_sd,
-           B = fig_sd_all,
-           C = p_names, design = layout) +
-  plot_annotation(tag_levels = 'A') & 
+wrap_plots(A = fig_sd2,
+           B = p_names,
+           design = layout) & 
   theme(plot.tag = element_text(size = 8))
 
 dev.off()
