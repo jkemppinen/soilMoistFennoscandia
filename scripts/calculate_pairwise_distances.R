@@ -72,7 +72,6 @@ predictors_climate <- read_csv("data/ERA5_means.csv") %>%
 predictors <- predictors %>% mutate(across(chm:pgaps5m_metsakeskus_20, ~ifelse(grepl("RAS", id_code), 0, .x)))
 predictors %>% filter(grepl("RAS", id_code))
 
-
 #rename id_code
 predictors <- rename(predictors, plot = site)
 predictors <- rename(predictors, site = id_code)
@@ -92,7 +91,7 @@ left_join(d, predictors_climate) %>%
   select(-area2) -> d
 
 summary(d)
-d %>% filter(is.na(x_utm)) # None, so good!
+d %>% filter(is.na(x_utm)) %>% pull(site) # None, so good!
 
 # 2-D pairwise distances based on soil moisture mean & sd
 
@@ -218,6 +217,10 @@ summary(lm.moist_base)
 lm.moist_log <- lm(moist ~ swi + geo_dist_log + clim_dist, data =all_scaled)
 summary(lm.moist_log)
 # Nothing especially interesting here, maybe we use only the pairwise correlations?
+
+cor.test(all$moist, all$swi, method = "spearman")
+cor.test(all$moist, all$geo_dist, method = "spearman")
+cor.test(all$moist, all$clim_dist, method = "spearman")
 
 # Scatter plots
 plot_geo_dist <- all %>% 
