@@ -3,9 +3,10 @@ library(tidyverse)
 library(lubridate)
 library(scales)
 library(patchwork)
-library(ggside)
 
-your_sm  <- read_csv ("data/all_data_daily_2021.csv")
+# bring logger soil moisture files
+your_sm  <- read_csv ("data/all_data_daily_2021.csv") %>% 
+  filter(!grepl("PIS1", site)) # Exclude PISA sites in active forestry areas
 
 your_sm %>% mutate(area = ifelse(area %in% c("AIL", "MAL", "SAA"), "KIL", area)) -> your_sm
 
@@ -18,17 +19,45 @@ your_sm$area <- recode_factor(your_sm$area,
                               HYY = "HYY",
                               KAR = "KAR")
 
+# Select which year and months to include
 your_sm %>% 
   filter(year(date) %in% c(2020)) %>%
-  filter(month(date) %in% c( 6, 7, 8, 9)) -> your_sm
+  filter(month(date) %in% c(4:9)) -> your_sm 
 
-your_sm %>% filter(moist_prop > 90) -> your_sm
+# Keep data only after snow melt
+your_sm %>% 
+  filter(T1_mean > 1) %>% 
+  group_by(site) %>% 
+  summarise(first_date = min(date)) -> aggr1
 
-your_sm %>%
-  group_by(area, site) %>%
-  count() %>%
-  group_by(area) %>%
-  count()
+full_join(your_sm, aggr1) %>% 
+  filter(date >= first_date) %>% 
+  select(-first_date) -> your_sm
+
+# Based on the snow free season, keep only sites which have >= 90% of the period covered
+your_sm %>% group_by(site) %>% 
+  summarise(moist_prop2 = mean(moist_prop)) -> aggr2
+
+full_join(your_sm, aggr2) %>% filter(moist_prop2 >= 90) %>% 
+  filter(moist_prop >= 90) %>% 
+  select(-moist_prop2) -> your_sm
+
+# How many sites in total?
+length(unique(your_sm$site)) # 503 sites selected
+
+# How many measurements in total?
+your_sm %>% filter(!is.na(moist_mean)) %>% nrow()*24*4 # The total number of obsevations
+
+# Calculate moisture variables
+your_sm %>% group_by(site, area) %>% 
+  summarise(sm_mean = mean(moist_mean, na.rm = T),
+            sm_sd = sd(moist_mean, na.rm = T)) %>% 
+  ungroup() -> d
+
+d %>% mutate(area2 = substr(site, 1, 3)) -> d
+
+# How many sites per area included after filtering?
+table(d$area)
 
 # colors
 gnuplot (10)
@@ -40,7 +69,7 @@ p_line = your_sm %>% group_by(area, date) %>%
   ungroup(area, date) %>% 
   ggplot(aes(x=date, colour = area)) +
   geom_line(aes(y=moist_mean, group = site), alpha=2/10, size=0.25) +
-  geom_line(aes(y=moist_mean_all), size =0.5) +
+  geom_line(aes(y=moist_mean_all), size =0.75) +
   scale_color_manual(values = rev(your_palette(7))) +
   ylab("VWC%") +
   xlab("") +
@@ -48,7 +77,8 @@ p_line = your_sm %>% group_by(area, date) %>%
   scale_x_date(date_breaks = "1 month", date_labels =  "%d.%m.") +
   theme_classic() +
   theme(
-    legend.position = "None") +
+    legend.position = "None",
+    axis.text.x = element_blank()) +
   facet_grid(facets = area ~ .) +
   theme(
     strip.background = element_blank(),
@@ -64,7 +94,7 @@ p_line_all = your_sm %>% group_by(area, date) %>%
   scale_color_manual(values = rev(your_palette(7))) +
   ylab("VWC%") +
   xlab("") +
-  ylim(10,50) +
+  ylim(0,60) +
   scale_x_date(date_breaks = "1 month", date_labels =  "%d.%m.") +
   theme_classic() +
   theme(
@@ -80,7 +110,9 @@ p_boxplot = your_sm %>%
   ylab("VWC%") +
   xlab("Time") +
   ylim(0,60) +
-  scale_x_discrete(labels=c("6" = "June",
+  scale_x_discrete(labels=c("4" = "April",
+                            "5" = "May",
+                            "6" = "June",
                             "7" = "July",
                             "8" = "August",
                             "9" = "September")) +
@@ -101,7 +133,9 @@ p_density = your_sm %>%
   xlim(0.00,0.06) +
   theme_classic() +
   theme(
-    legend.position = "None") +
+    legend.position = "None",
+    axis.text.y = element_blank(),
+    axis.text.x = element_blank()) +
   facet_grid(facets = area ~ .) +
   theme(
     strip.background = element_blank(),
@@ -120,14 +154,15 @@ p_density_all = your_sm %>%
   theme_classic() +
   theme(
     axis.title.y=element_blank(),
-    legend.position = "None")
+    legend.position = "None",
+    axis.text.y = element_blank())
 
 # plot area names only
 your_palette(7)
 
 p_names = ggplot() +
   annotate("text", x = 1, y =1.7, size = 3.5, fontface =2,
-           label = "Rastigaisa",
+           label = "Rásttigáisá",
            colour="#FFDB24") +
   annotate("text", x = 1, y =1.6, size = 3.5, fontface =2,
            label = "Kilpisjärvi",
@@ -136,10 +171,10 @@ p_names = ggplot() +
            label = "Värriö",
            colour="#F9649B") +
   annotate("text", x = 1, y =1.4, size = 3.5, fontface =2,
-           label = "Pisa",
+           label = "Tiilikka",
            colour="#C728D6") +
   annotate("text", x = 1, y =1.3, size = 3.5, fontface =2,
-           label = "Tiilikka",
+           label = "Pisa",
            colour="#6A05FA") +
   annotate("text", x = 1, y =1.2, size = 3.5, fontface =2,
            label = "Hyytiälä",
@@ -154,7 +189,9 @@ p_names = ggplot() +
 #  plot_annotation(tag_levels = 'A') & 
 #  theme(plot.tag = element_text(size = 8))
 
+# print pdf
 layout <- '
+AAAB
 AAAB
 AAAB
 AAAB
@@ -162,9 +199,8 @@ CCCD
 EEEG
 '
 
-# print pdf
 dev.off()
-pdf(file="fig/fig_tempo.pdf", width = 6.30, height = 8.66)
+pdf(file="fig/fig_tempo.pdf", width = 7.48, height = 9.45)
 
 wrap_plots(A = p_line,
            B = p_density,
