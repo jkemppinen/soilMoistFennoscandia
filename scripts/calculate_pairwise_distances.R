@@ -223,10 +223,10 @@ summary(lm.moist_log)
 plot_geo_dist <- all %>% 
   ggplot(aes(x=geo_dist, y=moist)) +
   geom_point(size = 0.5, alpha=1/100) +
-  geom_smooth(method = lm, se = T, colour="#9F0FF0", size=0.5) +
+  geom_smooth(method = lm, se = T, colour="#0D00FF", size=0.5) +
   annotate("text", x = 9e+05, y = 6, label = "r = 0.06") + 
-  ylab ("Soil moisture dissimilarity") +
-  xlab ("Geographic distance")  +
+  ylab ("Soil moisture distance") +
+  xlab ("Geographical distance")  +
   theme_classic() +
   theme(
     aspect.ratio = 1,
@@ -235,10 +235,10 @@ plot_geo_dist <- all %>%
 plot_clim_dist <- all %>% 
   ggplot(aes(x=clim_dist, y=moist)) +
   geom_point(size = 0.5, alpha=1/100) +
-  geom_smooth(method = lm, se = T, colour="#9F0FF0", size=0.5) +
+  geom_smooth(method = lm, se = T, colour="#0D00FF", size=0.5) +
   annotate("text", x = 3, y = 6, label = "r = 0.05") +
   ylab ("") +
-  xlab ("Climatic dissimilarity") +
+  xlab ("Climatic distance") +
   theme_classic() +
   theme(
     aspect.ratio = 1,
@@ -248,10 +248,10 @@ plot_clim_dist <- all %>%
 plot_swi <- all %>%
   ggplot(aes(x=swi, y=moist)) +
   geom_point(size = 0.5, alpha=1/100) +
-  geom_smooth(method = lm, se = T, colour="#9F0FF0", size=0.5) +
+  geom_smooth(method = lm, se = T, colour="#0D00FF", size=0.5) +
   annotate("text", x = 3.5, y = 6, label = "r = 0.34") + 
   ylab ("") +
-  xlab ("Topograhic dissimilarity") +
+  xlab ("Topographic distance") +
   theme_classic() +
   theme(
     aspect.ratio = 1,
