@@ -68,11 +68,15 @@ your_palette <- colorRampPalette(c("#000099", "#0000FF", "#5000FF", "#9F0FF0", "
 
 # create spatial sd data
 your_sm %>% group_by(date, area) %>% 
-  summarise(sm_sd = sd(moist_mean, na.rm = T)) -> spatial_data
+  summarise(sm_sd = sd(moist_mean, na.rm = T),
+            n = n()) %>% 
+  filter(n > 20) -> spatial_data
 
 # create temporal sd data
 your_sm %>% group_by(site, area) %>% 
-  summarise(sm_sd = sd(moist_mean, na.rm = T)) %>% 
+  summarise(sm_sd = sd(moist_mean, na.rm = T),
+            n = n()) %>% 
+  filter(n > 20) %>% 
   group_by(area) %>% 
   summarise(sm_median = median(sm_sd, na.rm = T),
             sm_quantile25 = quantile(sm_sd, 0.25, na.rm = T),
