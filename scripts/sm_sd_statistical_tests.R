@@ -110,7 +110,7 @@ lmp <- your_sm_aggr %>%  lm(sm_sd ~ poly(sm_mean, 2), data = .)
 
 aovsa <- anova(lml, lmp) %>% tidy() %>% slice(2) %>% 
   mutate(area = "ALL", month = "All") %>% 
-  select(area, p.value, month)
+  select(area, statistic, p.value, month)
 
 glance(lml) %>% mutate(area = "ALL") %>% 
   select(area, nobs, r.squared, AIC) %>% 
@@ -140,7 +140,7 @@ fits <- fits %>%
 aovs <- map(fits$aov, tidy) %>% map(function(x){ x %>% slice(2)}) %>% 
   bind_rows(.id = "area") %>% 
   mutate(month = "All") %>% 
-  select(area, p.value, month)
+  select(area, statistic, p.value, month)
 
 map(fits$fit_linear, glance) %>% bind_rows(.id = "area") %>% 
   select(area, nobs, r.squared, AIC) %>% 
@@ -173,7 +173,7 @@ fits4 <- fits4 %>%
 aovs4 <- map(fits4$aov, tidy) %>% map(function(x){ x %>% slice(2)}) %>% 
   bind_rows(.id = "area") %>% 
   mutate(month = "April") %>% 
-  select(area, p.value, month)
+  select(area, statistic, p.value, month)
 
 map(fits4$fit_linear, glance) %>% bind_rows(.id = "area") %>% 
   select(area, nobs, r.squared, AIC) %>% 
@@ -204,7 +204,7 @@ fits5 <- fits5 %>%
 aovs5 <- map(fits5$aov, tidy) %>% map(function(x){ x %>% slice(2)}) %>% 
   bind_rows(.id = "area") %>% 
   mutate(month = "May") %>% 
-  select(area, p.value, month)
+  select(area, statistic, p.value, month)
 
 map(fits5$fit_linear, glance) %>% bind_rows(.id = "area") %>% 
   select(area, nobs, r.squared, AIC) %>% 
@@ -236,7 +236,7 @@ fits6 <- fits6 %>%
 aovs6 <- map(fits6$aov, tidy) %>% map(function(x){ x %>% slice(2)}) %>% 
   bind_rows(.id = "area") %>% 
   mutate(month = "June") %>% 
-  select(area, p.value, month)
+  select(area, statistic, p.value, month)
 
 map(fits6$fit_linear, glance) %>% bind_rows(.id = "area") %>% 
   select(area, nobs, r.squared, AIC) %>% 
@@ -268,7 +268,7 @@ fits7 <- fits7 %>%
 aovs7 <- map(fits7$aov, tidy) %>% map(function(x){ x %>% slice(2)}) %>% 
   bind_rows(.id = "area") %>% 
   mutate(month = "July") %>% 
-  select(area, p.value, month)
+  select(area, statistic, p.value, month)
 
 map(fits7$fit_linear, glance) %>% bind_rows(.id = "area") %>% 
   select(area, nobs, r.squared, AIC) %>% 
@@ -300,7 +300,7 @@ fits8 <- fits8 %>%
 aovs8 <- map(fits8$aov, tidy) %>% map(function(x){ x %>% slice(2)}) %>% 
   bind_rows(.id = "area") %>% 
   mutate(month = "July") %>% 
-  select(area, p.value, month)
+  select(area, statistic, p.value, month)
 
 map(fits8$fit_linear, glance) %>% bind_rows(.id = "area") %>% 
   select(area, nobs, r.squared, AIC) %>% 
@@ -332,7 +332,7 @@ fits9 <- fits9 %>%
 aovs9 <- map(fits9$aov, tidy) %>% map(function(x){ x %>% slice(2)}) %>% 
   bind_rows(.id = "area") %>% 
   mutate(month = "Semptember") %>% 
-  select(area, p.value, month)
+  select(area, statistic, p.value, month)
 
 map(fits9$fit_linear, glance) %>% bind_rows(.id = "area") %>% 
   select(area, nobs, r.squared, AIC) %>% 
@@ -358,8 +358,9 @@ ress <- bind_rows(fitsa,
                   fits8,
                   fits9) %>% 
   relocate(R2_poly, .after = R2_linear) %>% 
-  relocate(p.value, .after = AIC_poly) %>% 
-  rename(anova_p_value = p.value) %>% 
+  relocate(statistic:p.value, .after = AIC_poly) %>% 
+  rename(anova_p_value = p.value,
+         F_statistic = statistic) %>% 
   mutate(signf = ifelse(anova_p_value < 0.1, ".", ""),
          signf = ifelse(anova_p_value < 0.05, "*", signf),
          signf = ifelse(anova_p_value < 0.01, "**", signf),
