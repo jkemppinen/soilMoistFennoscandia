@@ -134,21 +134,6 @@ fig_sd = your_sm %>% group_by(site, area) %>%
   ggplot(aes(x=sm_mean, y=sm_sd, colour=area, fill=area)) +
   geom_point(size=0.5, alpha=5/10) +
   geom_smooth(method = lm, formula = y ~ poly(x, 2), se = F, size=0.5) +
-  scale_fill_manual(values = rev(your_palette(7))) +
-  scale_color_manual(values = rev(your_palette(7))) +
-  ylab ("Standard deviation of VWC%") +
-  xlab ("Mean VWC%") +
-  theme_classic() +
-  theme(
-    aspect.ratio = 1,
-    legend.position = "None")
-
-fig_sd2 = your_sm %>% group_by(site, area) %>% 
-  summarise(sm_mean = mean(moist_mean, na.rm = T),
-            sm_sd = sd(moist_mean, na.rm = T)) %>% 
-  ggplot(aes(x=sm_mean, y=sm_sd, colour=area, fill=area)) +
-  geom_point(size=0.5, alpha=5/10) +
-  geom_smooth(method = lm, formula = y ~ poly(x, 2), se = F, size=0.5) +
   geom_smooth(method = lm, formula = y ~ poly(x, 2), se = F, colour="black", fill="black", size=0.5, linetype = "dashed") +
   geom_point(data = your_sm_means, size = 4, pch=18) +
   scale_fill_manual(values = rev(your_palette(7))) +
@@ -160,6 +145,33 @@ fig_sd2 = your_sm %>% group_by(site, area) %>%
     aspect.ratio = 1,
     legend.position = "None")
 
+p_names = ggplot() +
+  annotate("text", x = 1, y =1.9, size = 3.5, fontface =2,
+           label = "All areas ***",
+           colour="#000000") +
+  annotate("text", x = 1, y =1.7, size = 3.5, fontface =2,
+           label = "Rásttigáisá .",
+           colour="#FFDB24") +
+  annotate("text", x = 1, y =1.6, size = 3.5, fontface =2,
+           label = "Kilpisjärvi ***",
+           colour="#FF9F5F") +
+  annotate("text", x = 1, y =1.5, size = 3.5, fontface =2,
+           label = "Värriö **",
+           colour="#F9649B") +
+  annotate("text", x = 1, y =1.4, size = 3.5, fontface =2,
+           label = "Tiilikka .",
+           colour="#C728D6") +
+  annotate("text", x = 1, y =1.3, size = 3.5, fontface =2,
+           label = "Pisa *",
+           colour="#6A05FA") +
+  annotate("text", x = 1, y =1.2, size = 3.5, fontface =2,
+           label = "Hyytiälä *",
+           colour="#0D00FF") +
+  annotate("text", x = 1, y =1.1, size = 3.5, fontface =2,
+           label = "Karkali **",
+           colour="#000099") +
+  theme_void()
+
 layout <- '
 AAAAA#
 AAAAAB
@@ -169,14 +181,14 @@ AAAAA#
 dev.off()
 pdf(file="fig/fig_variation.pdf", width = 7.48, height = 5)
 
-wrap_plots(A = fig_sd2,
+wrap_plots(A = fig_sd,
            B = p_names,
            design = layout) & 
   theme(plot.tag = element_text(size = 8))
 
 dev.off()
 
-# APPENDIX
+# plot monthly
 
 fig_sd_04 = your_sm_04 %>%
   group_by(site, area) %>% 
@@ -310,26 +322,26 @@ fig_sd_09 = your_sm_09 %>%
     strip.background = element_blank(),
     strip.text.x = element_blank())
 
-fig_sd = your_sm %>% group_by(site, area) %>% 
-  summarise(sm_mean = mean(moist_mean, na.rm = T),
-            sm_sd = sd(moist_mean, na.rm = T)) %>% 
-  ggplot(aes(x=sm_mean, y=sm_sd, colour=area, fill=area)) +
-  #  geom_point(size=1, alpha=5/10) +
-  geom_smooth(method = lm, formula = y ~ poly(x, 2), se = F, size=0.5) +
-  scale_fill_manual(values = rev(your_palette(7))) +
-  scale_color_manual(values = rev(your_palette(7))) +
-  ggtitle("All months") +
-  ylab ("") +
-  xlab ("") +
-  # ylim (0,8) + 
-  theme_classic() +
-  theme(
-    aspect.ratio = 1,
-    legend.position = "None") +
-  facet_wrap(vars(area), ncol= 1) +
-  theme(
-    strip.background = element_blank(),
-    strip.text.x = element_blank())
+#fig_sd = your_sm %>% group_by(site, area) %>% 
+#  summarise(sm_mean = mean(moist_mean, na.rm = T),
+#            sm_sd = sd(moist_mean, na.rm = T)) %>% 
+#  ggplot(aes(x=sm_mean, y=sm_sd, colour=area, fill=area)) +
+#  #  geom_point(size=1, alpha=5/10) +
+#  geom_smooth(method = lm, formula = y ~ poly(x, 2), se = F, size=0.5) +
+#  scale_fill_manual(values = rev(your_palette(7))) +
+#  scale_color_manual(values = rev(your_palette(7))) +
+#  ggtitle("All months") +
+#  ylab ("") +
+#  xlab ("") +
+#  # ylim (0,8) + 
+#  theme_classic() +
+#  theme(
+#    aspect.ratio = 1,
+#    legend.position = "None") +
+#  facet_wrap(vars(area), ncol= 1) +
+#  theme(
+#    strip.background = element_blank(),
+#    strip.text.x = element_blank())
 
 # plot area names only
 your_palette(7)
@@ -359,11 +371,11 @@ p_names = ggplot() +
   theme_void()
 
 layout <- '
-ABCDEGH
-ABCDEGH
-ABCDEGH
-ABCDEGH
-##III##
+ABCDEG
+ABCDEG
+ABCDEG
+ABCDEG
+##II##
 '
 
 dev.off()
@@ -375,8 +387,7 @@ wrap_plots(A = fig_sd_04,
            D = fig_sd_07,
            E = fig_sd_08,
            G = fig_sd_09,
-           H = fig_sd,
-           I = p_names, design = layout) +
+           H = p_names, design = layout) +
   plot_annotation(tag_levels = 'A') & 
   theme(plot.tag = element_text(size = 8))
 
