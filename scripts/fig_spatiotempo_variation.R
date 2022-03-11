@@ -72,6 +72,11 @@ your_sm %>% group_by(date, area) %>%
             n = n()) %>% 
   filter(n > 20) -> spatial_data
 
+your_sm %>% group_by(date, area) %>% 
+  summarise(sm_mean = mean(moist_mean, na.rm = T),
+            n = n()) %>% 
+  filter(n > 20) -> mean_data
+
 # create temporal sd data
 your_sm %>% group_by(site, area) %>% 
   summarise(sm_sd = sd(moist_mean, na.rm = T),
@@ -140,6 +145,38 @@ wrap_plots(A = p_sd_all_line,
            B = p_names, design = layout)
 
 dev.off()
+
+
+# plot spatial vs temporal sd in one plot - smooth
+
+p_mean_all_smooth = mean_data  %>% 
+  ggplot(aes(x=date, group = area)) +
+  geom_smooth(aes (y=sm_mean, colour=area, fill=area), size=0.5, method = "lm", se = T, alpha=3/10) +
+  scale_fill_manual(values = rev(your_palette(7))) +
+  scale_color_manual(values = rev(your_palette(7))) +
+  ylab ("") +
+  xlab ("Time") +
+  ylim (0, 45) +
+  scale_x_date(date_breaks = "1 month", date_labels =  "%d.%m.") +
+  theme_classic() +
+  theme(
+    aspect.ratio = 1,
+    legend.position = "None")
+
+p_sd_all_smooth = spatial_data  %>% 
+  ggplot(aes(x=date, group = area)) +
+  geom_smooth(aes (y=sm_sd, colour=area, fill=area), size=0.5, method = "lm", se = T, alpha=3/10) +
+  scale_fill_manual(values = rev(your_palette(7))) +
+  scale_color_manual(values = rev(your_palette(7))) +
+  ylab ("") +
+  xlab ("Time") +
+  ylim (0, 21) +
+  scale_x_date(date_breaks = "1 month", date_labels =  "%d.%m.") +
+  theme_classic() +
+  theme(
+    aspect.ratio = 1,
+    legend.position = "None")
+
 
 # EXTRA FOR APPENDIX?
 
