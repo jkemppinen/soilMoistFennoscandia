@@ -299,7 +299,7 @@ fits8 <- fits8 %>%
 
 aovs8 <- map(fits8$aov, tidy) %>% map(function(x){ x %>% slice(2)}) %>% 
   bind_rows(.id = "area") %>% 
-  mutate(month = "July") %>% 
+  mutate(month = "August") %>% 
   select(area, statistic, p.value, month)
 
 map(fits8$fit_linear, glance) %>% bind_rows(.id = "area") %>% 
@@ -331,7 +331,7 @@ fits9 <- fits9 %>%
 
 aovs9 <- map(fits9$aov, tidy) %>% map(function(x){ x %>% slice(2)}) %>% 
   bind_rows(.id = "area") %>% 
-  mutate(month = "Semptember") %>% 
+  mutate(month = "September") %>% 
   select(area, statistic, p.value, month)
 
 map(fits9$fit_linear, glance) %>% bind_rows(.id = "area") %>% 
