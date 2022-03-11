@@ -364,8 +364,11 @@ ress <- bind_rows(fitsa,
   mutate(signf = ifelse(anova_p_value < 0.1, ".", ""),
          signf = ifelse(anova_p_value < 0.05, "*", signf),
          signf = ifelse(anova_p_value < 0.01, "**", signf),
-         signf = ifelse(anova_p_value < 0.001, "***", signf))
-  
+         signf = ifelse(anova_p_value < 0.001, "***", signf)) %>% 
+  select(-starts_with("AUC")) %>% 
+  # mutate(area = gsub("Ä","A",area)) %>% 
+  mutate(month = factor(month, levels = c("All","April","May","June","July","August","September"))) %>% 
+  mutate(area = factor(area, levels = c("ALL", "RAS", "KIL", "VÄR", "TII", "PIS", "HYY", "KAR"))) %>% 
+  arrange(month, area)
 
-write_csv(ress, "output/sd_sm_model_results.csv")
-
+write.csv(ress, "output/sd_sm_model_results.csv",fileEncoding = "latin1")
