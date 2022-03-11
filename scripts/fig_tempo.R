@@ -46,18 +46,82 @@ full_join(your_sm, aggr2) %>% filter(moist_prop2 >= 90) %>%
 length(unique(your_sm$site)) # 503 sites selected
 
 # How many measurements in total?
-your_sm %>% filter(!is.na(moist_mean)) %>% nrow()*24*4 # The total number of obsevations
+your_sm %>% filter(!is.na(moist_mean)) %>% nrow()*24*4 # The total number of observations
 
-# Calculate moisture variables
+# How many sites per area included after filtering?
+length(unique(your_sm$site))
+
+# Calculate mean for each area
 your_sm %>% group_by(site, area) %>% 
   summarise(sm_mean = mean(moist_mean, na.rm = T),
             sm_sd = sd(moist_mean, na.rm = T)) %>% 
-  ungroup() -> d
+  group_by(area) %>% 
+  summarise(sm_mean = mean(sm_mean, na.rm = T),
+            sm_sd = mean(sm_sd, na.rm = T)) -> your_sm_means
 
-d %>% mutate(area2 = substr(site, 1, 3)) -> d
+# These are used to filter monthly datasets
+your_sm %>% 
+  mutate(month = month(date)) %>% 
+  group_by(area, site, month) %>% count() %>% filter(n > 10) -> site_aggr
 
-# How many sites per area included after filtering?
-table(d$area)
+site_aggr %>% 
+  group_by(area, month) %>% count() %>% filter(n > 20) -> area_aggr
+
+#subset
+your_sm %>% 
+  mutate(month = month(date)) %>% 
+  filter(month %in% c(4)) %>% 
+  left_join(., area_aggr) %>% 
+  filter(!is.na(n)) %>% select(-n) %>% 
+  left_join(., site_aggr) %>% 
+  filter(!is.na(n)) %>% select(-n) -> your_sm_04
+
+your_sm %>% 
+  mutate(month = month(date)) %>% 
+  filter(month %in% c(5)) %>% 
+  left_join(., area_aggr) %>% 
+  filter(!is.na(n)) %>% select(-n) %>% 
+  left_join(., site_aggr) %>% 
+  filter(!is.na(n)) %>% select(-n) -> your_sm_05
+
+your_sm %>% 
+  mutate(month = month(date)) %>% 
+  filter(month %in% c(6)) %>% 
+  left_join(., area_aggr) %>% 
+  filter(!is.na(n)) %>% select(-n) %>% 
+  left_join(., site_aggr) %>% 
+  filter(!is.na(n)) %>% select(-n) -> your_sm_06
+
+your_sm %>% 
+  mutate(month = month(date)) %>% 
+  filter(month %in% c(7)) %>% 
+  left_join(., area_aggr) %>% 
+  filter(!is.na(n)) %>% select(-n) %>% 
+  left_join(., site_aggr) %>% 
+  filter(!is.na(n)) %>% select(-n) -> your_sm_07
+
+your_sm %>% 
+  mutate(month = month(date)) %>% 
+  filter(month %in% c(8)) %>% 
+  left_join(., area_aggr) %>% 
+  filter(!is.na(n)) %>% select(-n) %>% 
+  left_join(., site_aggr) %>% 
+  filter(!is.na(n)) %>% select(-n) -> your_sm_08
+
+your_sm %>% 
+  mutate(month = month(date)) %>% 
+  filter(month %in% c(9)) %>% 
+  left_join(., area_aggr) %>% 
+  filter(!is.na(n)) %>% select(-n) %>% 
+  left_join(., site_aggr) %>% 
+  filter(!is.na(n)) %>% select(-n) -> your_sm_09
+
+your_sm = bind_rows(your_sm_04,
+          your_sm_05,
+          your_sm_06,
+          your_sm_07,
+          your_sm_08,
+          your_sm_09)
 
 # colors
 gnuplot (10)
