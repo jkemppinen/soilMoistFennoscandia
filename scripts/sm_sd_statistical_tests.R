@@ -365,7 +365,7 @@ ress <- bind_rows(fitsa,
          signf = ifelse(anova_p_value < 0.05, "*", signf),
          signf = ifelse(anova_p_value < 0.01, "**", signf),
          signf = ifelse(anova_p_value < 0.001, "***", signf)) %>% 
-  select(-starts_with("AUC")) %>% 
+  select(-starts_with("AIC")) %>% 
   # mutate(area = gsub("Ä","A",area)) %>% 
   mutate(month = factor(month, levels = c("All","April","May","June","July","August","September"))) %>% 
   mutate(area = factor(area, levels = c("ALL", "RAS", "KIL", "VÄR", "TII", "PIS", "HYY", "KAR"))) %>% 
