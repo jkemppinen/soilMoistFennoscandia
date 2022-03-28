@@ -269,7 +269,7 @@ plot_geo_dist <- all %>%
   ggplot(aes(x=geo_dist, y=moist)) +
   geom_point(size = 0.5, alpha=1/100) +
   geom_smooth(method = lm, formula = 'y ~ poly(x, 2)', se = T, colour="#0D00FF", size=0.5) +
-  annotate("text", x = 9e+05, y = 6, label = "R2 = 0.002") + 
+  annotate("text", x = 9e+05, y = 6, label = "R2 = 0.003") + 
   ylab ("Soil moisture distance") +
   xlab ("Geographical distance")  +
   theme_classic() +
@@ -281,7 +281,7 @@ plot_clim_dist <- all %>%
   ggplot(aes(x=clim_dist, y=moist)) +
   geom_point(size = 0.5, alpha=1/100) +
   geom_smooth(method = lm, formula = 'y ~ poly(x, 2)', se = T, colour="#0D00FF", size=0.5) +
-  annotate("text", x = 3, y = 6, label = "R2 = 0.002") +
+  annotate("text", x = 3, y = 6, label = "R2 = 0.003") +
   ylab ("") +
   xlab ("Climatic distance") +
   theme_classic() +
