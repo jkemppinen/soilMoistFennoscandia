@@ -256,7 +256,7 @@ plot_geo_dist <- all %>%
 plot_clim_dist <- all %>% 
   ggplot(aes(x=clim_dist, y=moist)) +
   geom_point(size = 0.5, alpha=1/100) +
-  geom_smooth(method = lm, se = T, colour="#0D00FF", size=0.5) +
+  geom_smooth(method = lm, formula = 'y ~ poly(x, 2)', se = T, colour="#0D00FF", size=0.5) +
   annotate("text", x = 3, y = 6, label = "R2 = 0.002") +
   ylab ("") +
   xlab ("Climatic distance") +
@@ -269,7 +269,7 @@ plot_clim_dist <- all %>%
 plot_swi <- all %>%
   ggplot(aes(x=swi, y=moist)) +
   geom_point(size = 0.5, alpha=1/100) +
-  geom_smooth(method = lm, se = T, colour="#0D00FF", size=0.5) +
+  geom_smooth(method = lm, formula = 'y ~ poly(x, 2)', se = T, colour="#0D00FF", size=0.5) +
   annotate("text", x = 3.5, y = 6, label = "R2 = 0.106") + 
   ylab ("") +
   xlab ("Topographic distance") +
