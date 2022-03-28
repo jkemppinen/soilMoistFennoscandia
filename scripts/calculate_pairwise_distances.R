@@ -240,6 +240,30 @@ summary(lm_clim_dist1)
 summary(lm_clim_dist2)
 anova(lm_clim_dist1, lm_clim_dist2)
 
+lm_lat_dist1 <- lm(moist ~ lat_dist, data = all_scaled %>% filter(complete.cases(.)))
+lm_lat_dist2 <- lm(moist ~ poly(lat_dist,2), data = all_scaled %>% filter(complete.cases(.)))
+summary(lm_lat_dist1)
+summary(lm_lat_dist2)
+anova(lm_lat_dist1, lm_lat_dist2)
+
+lm_lon_dist1 <- lm(moist ~ lon_dist, data = all_scaled %>% filter(complete.cases(.)))
+lm_lon_dist2 <- lm(moist ~ poly(lon_dist,2), data = all_scaled %>% filter(complete.cases(.)))
+summary(lm_lon_dist1)
+summary(lm_lon_dist2)
+anova(lm_lon_dist1, lm_lon_dist2)
+
+lm_temp_dist1 <- lm(moist ~ temp_dist, data = all_scaled %>% filter(complete.cases(.)))
+lm_temp_dist2 <- lm(moist ~ poly(temp_dist,2), data = all_scaled %>% filter(complete.cases(.)))
+summary(lm_temp_dist1)
+summary(lm_temp_dist2)
+anova(lm_temp_dist1, lm_temp_dist2)
+
+lm_prec_dist1 <- lm(moist ~ prec_dist, data = all_scaled %>% filter(complete.cases(.)))
+lm_prec_dist2 <- lm(moist ~ poly(prec_dist,2), data = all_scaled %>% filter(complete.cases(.)))
+summary(lm_prec_dist1)
+summary(lm_prec_dist2)
+anova(lm_prec_dist1, lm_prec_dist2)
+
 # Scatter plots
 plot_geo_dist <- all %>% 
   ggplot(aes(x=geo_dist, y=moist)) +
