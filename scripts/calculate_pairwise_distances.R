@@ -208,7 +208,7 @@ cor(all %>% select(moist,lat_dist,lon_dist,temp_dist,prec_dist), use = "pairwise
 all_scaled <- all %>% 
   as.data.frame() %>% mutate(across(moist:lot_dist_log, ~scale(.x)))
 
-
+hist((all$moist))
 hist(sqrt(all$moist))
 
 lm.moist_base <- lm(moist ~ swi + geo_dist + clim_dist, data =all_scaled)
@@ -222,12 +222,30 @@ cor.test(all$moist, all$swi, method = "spearman")
 cor.test(all$moist, all$geo_dist, method = "spearman")
 cor.test(all$moist, all$clim_dist, method = "spearman")
 
+lm_swi1 <- lm(moist ~ swi, data = all_scaled %>% filter(complete.cases(.)))
+lm_swi2 <- lm(moist ~ poly(swi,2), data = all_scaled %>% filter(complete.cases(.)))
+summary(lm_swi1)
+summary(lm_swi2)
+anova(lm_swi1, lm_swi2)
+
+lm_geo_dist1 <- lm(moist ~ geo_dist, data = all_scaled %>% filter(complete.cases(.)))
+lm_geo_dist2 <- lm(moist ~ poly(geo_dist,2), data = all_scaled %>% filter(complete.cases(.)))
+summary(lm_geo_dist1)
+summary(lm_geo_dist2)
+anova(lm_geo_dist1, lm_geo_dist2)
+
+lm_clim_dist1 <- lm(moist ~ clim_dist, data = all_scaled %>% filter(complete.cases(.)))
+lm_clim_dist2 <- lm(moist ~ poly(clim_dist,2), data = all_scaled %>% filter(complete.cases(.)))
+summary(lm_clim_dist1)
+summary(lm_clim_dist2)
+anova(lm_clim_dist1, lm_clim_dist2)
+
 # Scatter plots
 plot_geo_dist <- all %>% 
   ggplot(aes(x=geo_dist, y=moist)) +
   geom_point(size = 0.5, alpha=1/100) +
-  geom_smooth(method = lm, se = T, colour="#0D00FF", size=0.5) +
-  annotate("text", x = 9e+05, y = 6, label = "r = 0.06") + 
+  geom_smooth(method = lm, formula = 'y ~ poly(x, 2)', se = T, colour="#0D00FF", size=0.5) +
+  annotate("text", x = 9e+05, y = 6, label = "R2 = 0.002") + 
   ylab ("Soil moisture distance") +
   xlab ("Geographical distance")  +
   theme_classic() +
@@ -239,7 +257,7 @@ plot_clim_dist <- all %>%
   ggplot(aes(x=clim_dist, y=moist)) +
   geom_point(size = 0.5, alpha=1/100) +
   geom_smooth(method = lm, se = T, colour="#0D00FF", size=0.5) +
-  annotate("text", x = 3, y = 6, label = "r = 0.05") +
+  annotate("text", x = 3, y = 6, label = "R2 = 0.002") +
   ylab ("") +
   xlab ("Climatic distance") +
   theme_classic() +
@@ -252,7 +270,7 @@ plot_swi <- all %>%
   ggplot(aes(x=swi, y=moist)) +
   geom_point(size = 0.5, alpha=1/100) +
   geom_smooth(method = lm, se = T, colour="#0D00FF", size=0.5) +
-  annotate("text", x = 3.5, y = 6, label = "r = 0.34") + 
+  annotate("text", x = 3.5, y = 6, label = "R2 = 0.106") + 
   ylab ("") +
   xlab ("Topographic distance") +
   theme_classic() +
