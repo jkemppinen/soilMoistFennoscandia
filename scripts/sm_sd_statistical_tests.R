@@ -372,3 +372,17 @@ ress <- bind_rows(fitsa,
   arrange(month, area)
 
 write.csv(ress, "output/sd_sm_model_results.csv",fileEncoding = "latin1")
+
+# Calculate summaries
+
+ress %>% filter(area != "ALL") %>% 
+  group_by(month) %>% 
+  summarise(R2_linear = mean(R2_linear),
+            R2_poly = mean(R2_poly))
+
+ress %>% filter(month != "All") %>% pull(signf) %>% table()
+
+ress %>% filter(month != "All") %>% 
+  group_by(area) %>% 
+  summarise(R2_linear = mean(R2_linear),
+            R2_poly = mean(R2_poly))

@@ -47,8 +47,17 @@ unique(daily$area)
 
 daily <- daily %>% rename(moist_prop = moist1_prop)
 
+daily2 <- daily %>% 
+  select(site:date, T1_mean, T2_mean, T3_mean, T4_mean, 
+         starts_with("moist"), error_tomst, error_T4, cal_class) %>% 
+  # filter(date >= "2020-01-01", date <= "2020-12-31") %>% 
+  filter(date >= "2020-03-01", date <= "2020-10-31") %>% 
+  mutate(area = ifelse(area %in% c("AIL","MAL","SAA"), "KIL",area)) %>% 
+  filter(!grepl("PIS1", site)) %>%  # Exclude PISA sites in active forestry areas
+  filter(!area %in% c("RAR"))
+
 # Daily data ready!
-write_csv(daily %>% filter(!area %in% c("RAR")), "data/all_data_daily_2021.csv")
+write_csv(daily2, "data/all_data_daily_2021.csv")
 
 ############################################################################
 # Aggregate to monthly values
