@@ -1,64 +1,54 @@
 ###############################################################################
 # Gather and combine moisture data from study area specific Github repositories
 
-
 library(tidyverse)
 library(lubridate)
 library(zoo)
 library(data.table)
 
-# Download datasets
-# Rastigaisa
-d1 <- read_csv("https://raw.githubusercontent.com/poniitty/Rastigaisa_microclimate/main/output/tomst_data_daily.csv")
+d <- fread("C:/datacloud/biogeoclimate/microclimate/data/logger/all_data.csv") %>% 
+  select(-moist_count) %>% 
+  relocate(arh, .after = T4) %>% 
+  mutate(datetime = with_tz(datetime, tzone = "Etc/GMT-2")) %>% 
+  mutate(date = as_date(datetime)) %>% 
+  relocate(date, .after = datetime)
 
-# Kilpisjärvi
-d2 <- read_csv("https://raw.githubusercontent.com/poniitty/kilpisjarvi_microclimate/main/output/tomst_data_daily.csv") %>% 
-  filter(!grepl("RA", site))
+########################################################################
+# AGGREGATE TO DAILY VALUES
 
-# Värriö
-d3 <- read_csv("https://raw.githubusercontent.com/poniitty/varrio_microclimate/main/output/tomst_data_daily.csv")
+notNA_prop <- function(x){ round(sum(is.finite(x)/length(x))*100,1) }
 
-# Tiilikka
-d4 <- read_csv("https://raw.githubusercontent.com/poniitty/Tiilikka_microclimates/main/output/tomst_data_daily.csv")
+d %>% 
+  group_by(id_code, date) %>%
+  summarise(across(T1:moist1, ~notNA_prop(.x), 
+                   na.rm = F, .names = "{.col}_prop"),
+            across(T1:arh, list(mean = mean, min = min, max = max), 
+                   na.rm = T, .names = "{.col}_{.fn}"),
+            across(moist1:moist3, list(mean = mean, median = median, min = min, max = max), 
+                   na.rm = T, .names = "{.col}_{.fn}"),
+            error_tomst = max(error_tomst, na.rm = T),
+            error_T4 = max(error_T4, na.rm = T),
+            cal_class = max(cal_class, na.rm = T)) %>% 
+  rename(site = id_code) %>% 
+  ungroup() -> daily
 
-# Pisa
-d5 <- read_csv("https://raw.githubusercontent.com/poniitty/Pisa_microclimates/main/output/tomst_data_daily.csv")
+# Change Inf and -Inf to NA
+infmutate <- function(x) ifelse(is.infinite(x),NA,x)
+daily %>% mutate(across(c(T1_prop:arh_prop, error_tomst, error_T4, cal_class), infmutate)) -> daily
 
-# Hyytiälä
-d6 <- read_csv("https://raw.githubusercontent.com/poniitty/Hyytiala_microclimates/main/output/tomst_data_daily.csv")
-
-# Karkali
-d7 <- read_csv("https://raw.githubusercontent.com/poniitty/Karkali_microclimate/main/output/tomst_data_daily.csv")
-
-# Function for site identifiers
-add_zeros <- function(x){
-  if(nchar(x) == 1){
-    return(as.character(paste0("00",x)))
-  }
-  if(nchar(x) == 2){
-    return(as.character(paste0("0",x)))
-  }
-  if(nchar(x) > 2){
-    return(as.character(x))
-  }
-}
 
 # Combine all data and edit the sites ID's
-bind_rows(d1 %>% mutate(site = paste0("RAS",unlist(lapply(site, add_zeros)))),
-          d2,
-          d3 %>% mutate(site = paste0("VAR",unlist(lapply(site, add_zeros)))),
-          d4 %>% mutate(site = paste0("TII",unlist(lapply(site, add_zeros)))),
-          d5 %>% mutate(site = paste0("PIS",unlist(lapply(site, add_zeros)))),
-          d6 %>% mutate(site = paste0("HYY",unlist(lapply(site, add_zeros)))),
-          d7 %>% mutate(site = paste0("KAR",unlist(lapply(site, add_zeros))))) %>% 
+daily %>% 
   mutate(area = substr(site, 1, 3)) %>% 
   relocate(area, .after = site) -> daily
 
 # Check
 unique(daily$area)
 
+daily <- daily %>% rename(moist_prop = moist1_prop)
+
 # Daily data ready!
-write_csv(daily, "data/all_data_daily_2021.csv")
+write_csv(daily %>% filter(!area %in% c("RAR")), "data/all_data_daily_2021.csv")
 
 ############################################################################
 # Aggregate to monthly values
@@ -77,7 +67,7 @@ daycount <- data.frame(date = c(as_date(floor_date(min(daily$date), unit = "mont
 # First T1
 daily %>% 
   filter(T1_prop == 100,
-         probl %in% c(0,3),
+         error_tomst %in% c(0,3),
          is.finite(T1_mean)) %>% 
   mutate(month = month(date),
          year = year(date)) %>% 
@@ -96,7 +86,7 @@ daily %>%
 # T2
 daily %>% 
   filter(T2_prop == 100,
-         probl %in% c(0,3,4),
+         error_tomst %in% c(0,3,4),
          is.finite(T2_mean)) %>% 
   mutate(month = month(date),
          year = year(date)) %>% 
@@ -115,7 +105,7 @@ daily %>%
 # T3
 daily %>% 
   filter(T3_prop == 100,
-         probl %in% c(0),
+         error_tomst %in% c(0),
          is.finite(T3_mean)) %>% 
   mutate(month = month(date),
          year = year(date)) %>% 
@@ -131,36 +121,94 @@ daily %>%
   relocate(day_frac_T3, .after = ndays) %>% 
   ungroup() %>% select(-ndaysmax,-ndays) -> dm_T3
 
-# moist
+# moist1
 daily %>% 
   filter(moist_prop == 100,
-         probl %in% c(0,3,4),
-         is.finite(moist_mean)) %>% 
+         error_tomst %in% c(0,3,4),
+         is.finite(moist1_mean)) %>% 
   mutate(month = month(date),
          year = year(date)) %>% 
   group_by(site, year, month) %>% 
   summarise(ndays = n(),
-            moist_sd = round(sd(moist_mean, na.rm = T),2),
-            moist_cv = round(sd(moist_mean, na.rm = T)/mean(moist_mean, na.rm = T),2),
-            moist_med = round(median(moist_mean, na.rm = T),1),
-            moist_mean = round(mean(moist_mean, na.rm = T),1),
-            moist_absmax = round(max(moist_max, na.rm = T),1),
-            moist_absmin = round(min(moist_min, na.rm = T),1)) %>% 
+            moist1_sd = round(sd(moist1_mean, na.rm = T),2),
+            moist1_cv = round(sd(moist1_mean, na.rm = T)/mean(moist1_mean, na.rm = T),2),
+            moist1_med = round(median(moist1_median, na.rm = T),1),
+            moist1_mean = round(mean(moist1_mean, na.rm = T),1),
+            moist1_max = round(max(moist1_mean, na.rm = T),1),
+            moist1_min = round(min(moist1_mean, na.rm = T),1),
+            moist1_absmax = round(max(moist1_max, na.rm = T),1),
+            moist1_absmin = round(min(moist1_min, na.rm = T),1)) %>% 
   left_join(., daycount) %>% 
   mutate(day_frac_moist = ndays/ndaysmax) %>% 
   relocate(day_frac_moist, .after = ndays) %>% 
-  ungroup() %>% select(-ndaysmax,-ndays) -> dm_moist
+  ungroup() %>% select(-ndaysmax,-ndays) -> dm_moist1
+
+# moist2
+daily %>% 
+  filter(moist_prop == 100,
+         error_tomst %in% c(0,3,4),
+         is.finite(moist2_mean)) %>% 
+  mutate(month = month(date),
+         year = year(date)) %>% 
+  group_by(site, year, month) %>% 
+  summarise(ndays = n(),
+            moist2_sd = round(sd(moist2_mean, na.rm = T),2),
+            moist2_cv = round(sd(moist2_mean, na.rm = T)/mean(moist2_mean, na.rm = T),2),
+            moist2_med = round(median(moist2_median, na.rm = T),1),
+            moist2_mean = round(mean(moist2_mean, na.rm = T),1),
+            moist2_max = round(max(moist2_mean, na.rm = T),1),
+            moist2_min = round(min(moist2_mean, na.rm = T),1),
+            moist2_absmax = round(max(moist2_max, na.rm = T),1),
+            moist2_absmin = round(min(moist2_min, na.rm = T),1)) %>% 
+  left_join(., daycount) %>% 
+  ungroup() %>% select(-ndaysmax,-ndays) -> dm_moist2
+
+# moist3
+daily %>% 
+  filter(moist_prop == 100,
+         error_tomst %in% c(0,3,4),
+         is.finite(moist3_mean)) %>% 
+  mutate(month = month(date),
+         year = year(date)) %>% 
+  group_by(site, year, month) %>% 
+  summarise(ndays = n(),
+            moist3_sd = round(sd(moist3_mean, na.rm = T),2),
+            moist3_cv = round(sd(moist3_mean, na.rm = T)/mean(moist3_mean, na.rm = T),2),
+            moist3_med = round(median(moist3_median, na.rm = T),1),
+            moist3_mean = round(mean(moist3_mean, na.rm = T),1),
+            moist3_max = round(max(moist3_mean, na.rm = T),1),
+            moist3_min = round(min(moist3_mean, na.rm = T),1),
+            moist3_absmax = round(max(moist3_max, na.rm = T),1),
+            moist3_absmin = round(min(moist3_min, na.rm = T),1)) %>% 
+  left_join(., daycount) %>% 
+  ungroup() %>% select(-ndaysmax,-ndays) -> dm_moist3
+
 
 full_join(dm_T1, dm_T2) %>% 
   full_join(., dm_T3) %>% 
-  full_join(., dm_moist) %>% 
+  full_join(., dm_moist1) %>%  
+  full_join(., dm_moist2) %>%  
+  full_join(., dm_moist3) %>% 
   mutate(across(starts_with("day_f"), ~ifelse(!is.finite(.x), 0, .x))) %>% 
   relocate(starts_with("day_f"), .after = month) %>% 
   relocate(starts_with("moist"), .after = day_frac_moist)-> dm
 
-rm(dm_T1, dm_T2, dm_T3, dm_moist)
+rm(dm_T1, dm_T2, dm_T3, dm_moist1, dm_moist2, dm_moist3)
 
-write_csv(dm, "data/tomst_data_monthly_2021.csv")
+dm <- dm %>%
+  mutate(area = substr(site, 1, 3)) %>% 
+  relocate(area, .after = site)
+
+write_csv(dm %>% filter(!area %in% c("RAR")), "data/tomst_data_monthly_2021.csv")
+
+dm %>% 
+  filter(!area %in% c("RAR")) %>% 
+  filter(year == 2020, month == 7) %>% 
+  select(moist1_mean, moist2_mean, moist3_mean) %>% cor(., method = "spearman", use = "pairwise.complete.obs")
+
+dm %>% filter(year == 2020, month == 7) %>% 
+  select(area, moist1_mean, moist2_mean, moist3_mean) %>% 
+  group_by(area) %>% summary
 
 ###################################################################################
 # SNOW COVER DURATION
