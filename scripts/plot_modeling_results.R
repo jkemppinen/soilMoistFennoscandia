@@ -317,7 +317,7 @@ cv_df %>%
   facet_grid(rows = vars(pred_area), cols = vars(fit_area)) +
   scale_size_continuous(range = c(7.5, 14)) +
   #scale_color_viridis(option="mako", direction = 1, begin = 0, end = 0.8) +
-  scale_colour_gradient2 (low = "black", mid = "grey", high = "hotpink", midpoint = 0.25) +
+  scale_colour_gradient2 (low = "black", mid = "grey", high = "#F9649B", midpoint = 0.25) +
   theme_classic() + 
   theme(axis.text.x=element_blank(),
         axis.ticks.x=element_blank(),
