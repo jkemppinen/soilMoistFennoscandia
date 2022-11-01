@@ -382,3 +382,92 @@ wrap_plots(A = gg7,
 
 dev.off()
 
+# Transferability RMSE
+
+cv_df %>% 
+  filter(model == "lm") %>% 
+  group_by(fit_area, pred_area) %>% 
+  summarise(loocv_R2 = mean(loocv_R2, na.rm = T),
+            loocv_rmse = mean(loocv_rmse, na.rm = T)) %>% 
+  mutate(x = 1, y = 1) %>% 
+  mutate(loocv_R2 = round(loocv_R2,2),
+         loocv_rmse = round(loocv_rmse,1)) %>% 
+  ungroup() %>% 
+  mutate(fit_area = factor(fit_area, levels = plotting_order, labels = c("Kilpisjärvi", "Värriö", "Tiilikka", "Pisa", "Hyytiälä", "Karkali"))) %>% 
+  mutate(pred_area = factor(pred_area, levels = plotting_order, labels = c("Kilpisjärvi", "Värriö", "Tiilikka", "Pisa", "Hyytiälä", "Karkali"))) %>%
+  mutate(rmse_size = loocv_rmse*(-1)) %>% 
+  ggplot(aes(x = x, y = y, color = loocv_rmse))+
+  geom_point(aes(size = rmse_size)) + 
+  geom_text(aes(label = loocv_rmse), color = "white", size=3) +
+  facet_grid(rows = vars(pred_area), cols = vars(fit_area)) +
+  scale_size_continuous(range = c(7.5, 14)) +
+  #scale_color_viridis(option="mako", direction = 1, begin = 0, end = 0.8) +
+  scale_colour_gradient2 (high = "black", mid = "grey", low = "#F9649B", midpoint = 17.1) +
+  theme_classic() + 
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.text.y=element_blank(), 
+        axis.ticks.y=element_blank(),
+        axis.line.y = element_blank(),
+        axis.line.x = element_blank(),
+        strip.text.x = element_text(size = 7),
+        strip.text.y = element_text(size = 7),
+        strip.background = element_blank()) +
+  guides(color = FALSE, size = FALSE) +
+  ylab("Study area for predictions based on LM") +
+  xlab("Study area for model fitting based on LM") +
+  scale_y_continuous(position= "right") + 
+  scale_x_continuous(position= "top") -> gg9
+
+cv_df %>% 
+  filter(model == "gam") %>% 
+  group_by(fit_area, pred_area) %>% 
+  summarise(loocv_R2 = mean(loocv_R2, na.rm = T),
+            loocv_rmse = mean(loocv_rmse, na.rm = T)) %>% 
+  mutate(x = 1, y = 1) %>% 
+  mutate(loocv_R2 = round(loocv_R2,2),
+         loocv_rmse = round(loocv_rmse,1)) %>% 
+  ungroup() %>% 
+  mutate(fit_area = factor(fit_area, levels = plotting_order, labels = c("Kilpisjärvi", "Värriö", "Tiilikka", "Pisa", "Hyytiälä", "Karkali"))) %>% 
+  mutate(pred_area = factor(pred_area, levels = plotting_order, labels = c("Kilpisjärvi", "Värriö", "Tiilikka", "Pisa", "Hyytiälä", "Karkali"))) %>%
+  mutate(rmse_size = loocv_rmse*(-1)) %>% 
+  ggplot(aes(x = x, y = y, color = loocv_rmse))+
+  geom_point(aes(size = rmse_size)) + 
+  geom_text(aes(label = loocv_rmse), color = "white", size=3) +
+  facet_grid(rows = vars(pred_area), cols = vars(fit_area)) +
+  scale_size_continuous(range = c(7.5, 14)) +
+  #scale_color_viridis(option="mako", direction = 1, begin = 0, end = 0.8) +
+  scale_colour_gradient2 (high = "black", mid = "grey", low = "#F9649B", midpoint = 23.45) +
+  theme_classic() + 
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.text.y=element_blank(), 
+        axis.ticks.y=element_blank(),
+        axis.line.y = element_blank(),
+        axis.line.x = element_blank(),
+        strip.text.x = element_text(size = 7),
+        strip.text.y = element_text(size = 7),
+        strip.background = element_blank()) +
+  guides(color = FALSE, size = FALSE) +
+  ylab("Study area for predictions based on GAM") +
+  xlab("Study area for model fitting based on GAM") +
+  scale_y_continuous(position= "right") + 
+  scale_x_continuous(position= "top") -> gg10
+
+# print pdf
+layout <- '
+AB
+'
+
+dev.off()
+pdf(file="fig/fig_model_transferability_RMSE.pdf", width = 7.48, height = 4)
+
+wrap_plots(A = gg9,
+           B = gg10, design = layout) +
+  plot_annotation(tag_levels = 'A') & 
+  theme(plot.tag = element_text(size = 8))
+
+dev.off()
+
+
+
