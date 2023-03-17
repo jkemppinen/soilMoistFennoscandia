@@ -40,7 +40,6 @@ d <- d %>%
   summarise(moist_mean = mean(moist2_median),
             cal_class = median(cal_class))
 
-
 d %>% filter(!is.na(moist_mean)) %>% 
   group_by(area, week) %>% 
   count() -> count_sites 
@@ -99,14 +98,28 @@ d %>%
   summarise(r = cor(twi_luke, dtw_0_5ha, use = "pairwise.complete.obs"))
 
 # Select and preprocess other env data
+# preprocess soil class
+st <- d %>% 
+  group_by(site) %>% 
+  summarise(soil_type = max(cal_class)) %>% 
+  mutate(soil_type = ifelse(soil_type == 100, 8, soil_type)) %>% 
+  mutate(soil_type = ifelse(soil_type == 4, 5, soil_type)) %>% 
+  mutate(soil_type = ifelse(soil_type == 6, 5, soil_type)) %>% 
+  mutate(soil_type = ifelse(soil_type == 7, 5, soil_type)) %>% 
+  mutate(soil_type = ifelse(soil_type == 1, 2, soil_type)) %>% 
+  mutate(soil_type = factor(soil_type,
+                            levels = c(2,5,8),
+                            labels = c("sand","silt","peat")))
 
 # Predictors in the models
 predictors <- c("pisr_summer_10m","twi_luke","dtw_0_5ha","tpi20","tpi500","wet_effect")
+class_pred <- c("soil_type")
 
 e %>% 
+  left_join(., st) %>%
   mutate(altitude = altitude/100) %>% 
   mutate(across(starts_with("pgaps"), ~abs(.x-100))) %>% 
-  select(site, all_of(predictors)) %>% 
+  select(site, all_of(predictors), class_pred) %>% 
   mutate(across(all_of(predictors), ~as.numeric(scale(.x)))) -> e
 
 #####################################################################################
@@ -131,12 +144,19 @@ for(i in areas_to_model){
       # LM
       env_vars <- predictors
       
-      model_formula_lm <- formula(paste0(iii, " ~ ", paste(c(env_vars), collapse = " + ")))
+      model_formula_lm <- formula(paste0(iii, " ~ ", paste(c(env_vars), collapse = " + "), " + ", class_pred))
       
       temp %>% select(area, site, week, all_of(iii), cal_class) %>%
         left_join(e) %>%
         mutate(cal_class = factor(cal_class)) %>% 
         drop_na() -> mod_data
+      
+      ct <- table(mod_data[,class_pred])
+      
+      if(min(ct) == 1 & names(which.min(ct)) == "peat"){
+        mod_data <- mod_data %>% 
+          mutate(soil_type = recode(soil_type, peat = "silt"))
+      }
       
       mod <- lm(model_formula_lm, data = mod_data)
       
@@ -165,14 +185,14 @@ for(i in areas_to_model){
                                     model = "lm"))
       
       vi_df <- bind_rows(vi_df,
-                         vi_permute(mod, target = iii, train = mod_data %>% select(iii, env_vars),
+                         vi_permute(mod, target = iii, train = mod_data %>% select(iii, env_vars, class_pred),
                                     metric = "rsquared", pred_wrapper = predict, nsim = 10) %>% 
                            mutate(method = "perm_r2",
                                   area = i,
                                   week = ii,
                                   resp = iii,
                                   model = "lm"),
-                         vi_permute(mod, target = iii, train = mod_data %>% select(iii, env_vars),
+                         vi_permute(mod, target = iii, train = mod_data %>% select(iii, env_vars, class_pred),
                                     metric = "rmse", pred_wrapper = predict, nsim = 10) %>% 
                            mutate(method = "perm_rmse",
                                   area = i,
@@ -183,7 +203,7 @@ for(i in areas_to_model){
       
       # GAM
       
-      model_formula_gam <- formula(paste0(iii, " ~ ", paste("s(", c(env_vars), ", k = 3)", collapse = " + "), " + s(cal_class, bs = 're')"))
+      model_formula_gam <- formula(paste0(iii, " ~ ", paste("s(", c(env_vars), ", k = 3)", collapse = " + "), " + ", class_pred))
       
       mod <- mgcv::gam(model_formula_gam, method = "REML", data = mod_data)
       
@@ -198,7 +218,7 @@ for(i in areas_to_model){
       for(ir in seq_len(nrow(mod_data))){
         
         mod <- mgcv::gam(model_formula_gam, method = "REML", data = mod_data[-ir,])
-        preds <- c(preds, predict(mod, mod_data[ir,], exclude = "s(cal_class)"))
+        preds <- c(preds, predict(mod, mod_data[ir,]))
         
       }
       
@@ -214,14 +234,14 @@ for(i in areas_to_model){
                                     model = "gam"))
       
       vi_df <- bind_rows(vi_df,
-                         vi_permute(mod, target = iii, train = mod_data %>% select(iii, cal_class, env_vars),
+                         vi_permute(mod, target = iii, train = mod_data %>% select(iii, class_pred, env_vars),
                                     metric = "rsquared", pred_wrapper = predict, nsim = 10) %>% 
                            mutate(method = "perm_r2",
                                   area = i,
                                   week = ii,
                                   resp = iii,
                                   model = "gam"),
-                         vi_permute(mod, target = iii, train = mod_data %>% select(iii, cal_class, env_vars),
+                         vi_permute(mod, target = iii, train = mod_data %>% select(iii, class_pred, env_vars),
                                     metric = "rmse", pred_wrapper = predict, nsim = 10) %>% 
                            mutate(method = "perm_rmse",
                                   area = i,
@@ -252,30 +272,6 @@ by(df, INDICES = df$area, FUN = function(x) cor(x[, -1], method = "spearman", us
 #################################################################
 # Transferability
 
-e <- read_csv("data/all_env_variables.csv") %>% 
-  filter(logger == "Tomst" | is.na(logger)) %>% 
-  mutate(area = ifelse(area %in% c("AIL","MAL","SAA"), "KIL",area)) %>% 
-  filter(area %in% areas_to_model) %>% 
-  filter(!(area == "PIS" & site >= 100)) %>% 
-  select(-site) %>% rename(site = id_code)
-
-e <- left_join(e, 
-               read_csv("data/luke_variables.csv") %>% 
-                 filter(logger == "Tomst" | is.na(logger)) %>% 
-                 select(area, site, logger, dtw_0.5ha:twi) %>% 
-                 rename(twi_luke = twi)) %>% 
-  rename_with(., ~ gsub(".", "_", .x, fixed = TRUE))
-
-# Predictors in the models
-predictors <- c("pisr_summer_10m","twi_luke","dtw_0_5ha","tpi20","tpi500","wet_effect")
-
-e %>% 
-  mutate(altitude = altitude/100) %>% 
-  mutate(across(starts_with("pgaps"), ~abs(.x-100))) %>% 
-  select(site, all_of(predictors)) %>% 
-  mutate(across(all_of(predictors), ~as.numeric(scale(.x)))) -> e
-
-
 cv_df <- tibble()
 for(i in areas_to_model){
   print(i)
@@ -293,7 +289,7 @@ for(i in areas_to_model){
       # LM
       env_vars <- predictors
       
-      model_formula_lm <- formula(paste0(iii, " ~ ", paste(c(env_vars), collapse = " + ")))
+      model_formula_lm <- formula(paste0(iii, " ~ ", paste(c(env_vars), collapse = " + "), " + ", class_pred))
       
       temp %>% select(area, site, week, all_of(iii), cal_class) %>%
         left_join(e, by = "site") %>%
@@ -302,13 +298,22 @@ for(i in areas_to_model){
       
       mod <- lm(model_formula_lm, data = mod_data)
       
+      ct <- table(mod_data[,class_pred])
+      
       for(iiii in areas_to_model[-which(areas_to_model == i)]){
         
         temp2 <- d %>% 
           filter(area == iiii, week == ii) %>% 
           select(area, site, week, all_of(iii), cal_class) %>%
           left_join(e, by = "site") %>%
-          mutate(cal_class = factor(cal_class)) %>% 
+          mutate(cal_class = factor(cal_class))
+        
+        if(min(ct) == 0 & names(which.min(ct)) == "sand"){
+          temp2 <- temp2 %>% 
+            mutate(soil_type = recode(soil_type, sand = "silt"))
+        }
+        
+        temp2 <- temp2 %>%
           drop_na() %>% 
           mutate(preds = predict(mod, .))
         
@@ -323,11 +328,18 @@ for(i in areas_to_model){
         
       }
       
+      if(min(ct) == 1 & names(which.min(ct)) == "peat"){
+        mod_data2 <- mod_data %>% 
+          mutate(soil_type = recode(soil_type, peat = "silt"))
+      } else {
+        mod_data2 <- mod_data
+      }
+      
       preds <- c()
-      for(ir in seq_len(nrow(mod_data))){
+      for(ir in seq_len(nrow(mod_data2))){
         
-        mod <- lm(model_formula_lm, data = mod_data[-ir,])
-        preds <- c(preds, predict(mod, mod_data[ir,]))
+        mod <- lm(model_formula_lm, data = mod_data2[-ir,])
+        preds <- c(preds, predict(mod, mod_data2[ir,]))
         
       }
       
@@ -342,7 +354,7 @@ for(i in areas_to_model){
       
       # GAM
       
-      model_formula_gam <- formula(paste0(iii, " ~ ", paste("s(", c(env_vars), ", k = 3)", collapse = " + "), " + s(cal_class, bs = 're')"))
+      model_formula_gam <- formula(paste0(iii, " ~ ", paste("s(", c(env_vars), ", k = 3)", collapse = " + "), " + ", class_pred))
       
       mod <- mgcv::gam(model_formula_gam, method = "REML", data = mod_data)
       
@@ -352,9 +364,16 @@ for(i in areas_to_model){
           filter(area == iiii, week == ii) %>% 
           select(area, site, week, all_of(iii), cal_class) %>%
           left_join(e, by = "site") %>%
-          mutate(cal_class = factor(cal_class)) %>% 
+          mutate(cal_class = factor(cal_class))
+        
+        if(min(ct) == 0 & names(which.min(ct)) == "sand"){
+          temp2 <- temp2 %>% 
+            mutate(soil_type = recode(soil_type, sand = "silt"))
+        }
+        
+        temp2 <- temp2 %>%
           drop_na() %>% 
-          mutate(preds = predict(mod, ., exclude = "s(cal_class)"))
+          mutate(preds = predict(mod, .))
         
         cv_df <- bind_rows(cv_df,
                            tibble(fit_area = i,
@@ -368,10 +387,10 @@ for(i in areas_to_model){
       }
       
       preds <- c()
-      for(ir in seq_len(nrow(mod_data))){
+      for(ir in seq_len(nrow(mod_data2))){
         
-        mod <- mgcv::gam(model_formula_gam, method = "REML", data = mod_data[-ir,])
-        preds <- c(preds, predict(mod, mod_data[ir,], exclude = "s(cal_class)"))
+        mod <- mgcv::gam(model_formula_gam, method = "REML", data = mod_data2[-ir,])
+        preds <- c(preds, predict(mod, mod_data2[ir,]))
         
       }
       cv_df <- bind_rows(cv_df,

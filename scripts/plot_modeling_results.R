@@ -104,6 +104,7 @@ vi_df %>%
   mutate(Variable = recode_factor(Variable,
                                   pisr_summer_10m = "Solar radiation",
                                   wet_effect = "Distance to water",
+                                  soil_type = "Soil type",
                                   tpi20 = "TPI (20 m radius)",
                                   tpi500 = "TPI (500 m radius)",
                                   dtw_0_5ha = "DTW",
@@ -130,6 +131,7 @@ vi_df %>%
   mutate(Variable = recode_factor(Variable,
                                   pisr_summer_10m = "Solar radiation",
                                   wet_effect = "Distance to water",
+                                  soil_type = "Soil type",
                                   tpi20 = "TPI (20 m radius)",
                                   tpi500 = "TPI (500 m radius)",
                                   dtw_0_5ha = "DTW",
@@ -218,6 +220,7 @@ vi_df %>%
   mutate(Variable = recode_factor(Variable,
                                   pisr_summer_10m = "Solar radiation",
                                   wet_effect = "Distance to water",
+                                  soil_type = "Soil type",
                                   tpi20 = "TPI (20 m radius)",
                                   tpi500 = "TPI (500 m radius)",
                                   dtw_0_5ha = "DTW",
@@ -244,6 +247,7 @@ vi_df %>%
   mutate(Variable = recode_factor(Variable,
                                   pisr_summer_10m = "Solar radiation",
                                   wet_effect = "Distance to water",
+                                  soil_type = "Soil type",
                                   tpi20 = "TPI (20 m radius)",
                                   tpi500 = "TPI (500 m radius)",
                                   dtw_0_5ha = "DTW",
@@ -298,7 +302,6 @@ dev.off()
 #################################################################
 # Transferability
 
-cv_df %>% write_csv("output/cv_df_weekly.csv")
 cv_df <- read_csv("output/cv_df_weekly.csv")
 
 cv_df %>% 
