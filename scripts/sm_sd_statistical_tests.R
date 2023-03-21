@@ -2,6 +2,12 @@ library(tidyverse)
 library(lubridate)
 library(scales)
 library(broom)
+library(pals)
+
+gnuplot(7)
+
+# colors
+your_palette <- (c("darkgrey", "#FFDB24", "#FF9F5F", "#F9649B", "#C728D6", "#6A05FA", "#0D00FF", "#000099"))
 
 # bring logger soil moisture files
 
@@ -162,3 +168,70 @@ d %>%
   geom_smooth(method = "lm", formula = 'y ~ x + I(x^2)', color = "black") +
   facet_wrap(vars(area)) +
   theme_bw()
+
+# PLOT
+d %>% 
+  ggplot(aes(x = moist_mean, y = moist_sd, color = area, fill = area)) +
+  geom_point(size = 0.1, alpha = 0.2, shape=21, fill=NA, color="gray") +
+  geom_smooth(size = 1, method = "lm", formula = 'y ~ x + I(x^2)', color = "black", fill = "black") +
+  geom_smooth(size = 1, method = "lm", formula = 'y ~ 0 + x + I(x^2)') +
+  facet_grid(rows = vars(area)) +
+  scale_color_manual(values = (your_palette)) +
+  scale_fill_manual(values = (your_palette)) +
+  ylab(bquote("Standard deviation")) +
+  xlab("Mean\nsoil moisture") +
+  theme_classic() +
+  theme(aspect.ratio = 1) +
+  theme(strip.text.x = element_blank()) +
+  theme(strip.text.y = element_blank()) +
+  theme(legend.position = "none") -> gg1
+
+d %>% 
+  mutate(area = recode_factor(area,
+                              ALL = "All areas",
+                              RAS = "Rásttigáisá",
+                              KIL = "Kilpisjärvi",
+                              VAR = "Värriö",
+                              TII = "Tiilikka",
+                              PIS = "Pisa",
+                              HYY = "Hyytiälä",
+                              KAR = "Karkali")) %>% 
+  ggplot(aes(x = moist_mean, y = moist_sd, color = area, fill = area)) +
+  geom_point(size = 0.1, alpha = 0.2, shape=21, fill=NA, color="gray") +
+  geom_smooth(method = "lm", formula = 'y ~ x + I(x^2)') +
+  facet_grid(rows = vars(area)) +
+  scale_color_manual(values = (your_palette)) +
+  scale_fill_manual(values = (your_palette)) +
+  ylab(bquote("Coefficient of variation")) +
+  xlab("Mean\nsoil moisture") +
+  theme_classic() +
+  theme(aspect.ratio = 1) +
+  theme(strip.text.x = element_blank()) +
+  theme(legend.position="none",
+        strip.background = element_blank()) -> gg2
+
+# print pdf
+layout <- '
+AB###
+AB###
+AB###
+AB###
+AB###
+AB###
+AB###
+AB###
+AB###
+AB###
+AB###
+'
+
+dev.off()
+pdf(file="fig/fig_mean_sd_cv.pdf", width = 3.74, height = 7.48)
+
+wrap_plots(A = gg1,
+           B = gg2, design = layout) +
+  plot_annotation(tag_levels = 'A') & 
+  theme(plot.tag = element_text(size = 8))
+
+dev.off()
+

@@ -168,7 +168,7 @@ ABCCC
 ABCCC
 ABCCC
 ABCCC
-##DDD
+#DDD#
 '
 
 dev.off()
@@ -284,7 +284,7 @@ ABCCC
 ABCCC
 ABCCC
 ABCCC
-##DDD
+#DDD#
 '
 
 dev.off()
