@@ -3,6 +3,7 @@ library(lubridate)
 library(scales)
 library(broom)
 library(pals)
+library(patchwork)
 
 gnuplot(7)
 
@@ -173,8 +174,8 @@ d %>%
 d %>% 
   ggplot(aes(x = moist_mean, y = moist_sd, color = area, fill = area)) +
   geom_point(size = 0.1, alpha = 0.2, shape=21, fill=NA, color="gray") +
-  geom_smooth(size = 1, method = "lm", formula = 'y ~ x + I(x^2)', color = "black", fill = "black") +
-  geom_smooth(size = 1, method = "lm", formula = 'y ~ 0 + x + I(x^2)') +
+  geom_smooth(size = 1, method = "lm", formula = 'y ~ 0 + x + I(x^2)', color = "black", fill = "black") +
+  geom_smooth(size = 1, method = "lm", formula = 'y ~ x + I(x^2)') +
   facet_grid(rows = vars(area)) +
   scale_color_manual(values = (your_palette)) +
   scale_fill_manual(values = (your_palette)) +
@@ -196,7 +197,7 @@ d %>%
                               PIS = "Pisa",
                               HYY = "Hyytiälä",
                               KAR = "Karkali")) %>% 
-  ggplot(aes(x = moist_mean, y = moist_sd, color = area, fill = area)) +
+  ggplot(aes(x = moist_mean, y = moist_cv, color = area, fill = area)) +
   geom_point(size = 0.1, alpha = 0.2, shape=21, fill=NA, color="gray") +
   geom_smooth(method = "lm", formula = 'y ~ x + I(x^2)') +
   facet_grid(rows = vars(area)) +
