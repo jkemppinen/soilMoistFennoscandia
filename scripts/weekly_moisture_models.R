@@ -115,6 +115,9 @@ st <- d %>%
 predictors <- c("pisr_summer_10m","twi_luke","dtw_0_5ha","tpi20","tpi500","wet_effect")
 class_pred <- c("soil_type")
 
+d %>% left_join(e %>% select(site, all_of(predictors))) -> mod_data_all
+
+
 e %>% 
   left_join(., st) %>%
   mutate(altitude = altitude/100) %>% 
@@ -260,6 +263,30 @@ vi_df   %>% write_csv("output/vi_df.csv")
 # Write out modelling data for later use in plottings
 
 d %>% left_join(e) -> mod_data
+
+mod_data_all %>% 
+  filter(week == 30) %>% 
+  mutate(area = factor(area, levels = areas_to_model, labels = c("Kilpisjärvi", "Värriö", "Tiilikka", "Pisa", "Hyytiälä", "Karkali"))) %>% 
+  select(area, all_of(predictors)) %>% 
+  mutate(dtw_0_5ha = dtw_0_5ha/100,
+         twi_luke = twi_luke/1000) %>% 
+  pivot_longer(cols = pisr_summer_10m:wet_effect) %>% 
+  mutate(name = recode_factor(name,
+                                  pisr_summer_10m = "Solar radiation",
+                                  wet_effect = "Distance to water",
+                                  soil_type = "Soil type",
+                                  tpi20 = "TPI (20 m radius)",
+                                  tpi500 = "TPI (500 m radius)",
+                                  dtw_0_5ha = "DTW",
+                                  twi_luke = "TWI")) %>% 
+  group_by(area, name) %>% 
+  summarise(mean = round(mean(value, na.rm = T),2),
+            min = min(value, na.rm = T),
+            max = max(value, na.rm = T)) %>% 
+  mutate(value = paste0(mean, " [", min, ", ", max, "]")) %>% 
+  pivot_wider(id_cols = area, names_from = name, values_from = value) -> sdf
+
+write_csv2(sdf, "output/predictors_summary_table.csv")
 
 # correlations by area and month
 
