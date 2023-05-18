@@ -1,0 +1,9 @@
+cff-version: 1.1.0
+message: "If you use these data and code, please cite it as below."
+authors:
+  - family-names: Julia
+    given-names: Kemppinen
+    orcid: https://orcid.org/0000-0001-7521-7229
+title: jkemppinen/soilMoistFennoscandia: Data and code from: Soil moisture variations from boreal forests to the tundra
+version: v1.0
+date-released: 2023-05-18
